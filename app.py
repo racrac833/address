@@ -95,6 +95,16 @@ st.markdown("""
         text-align: center;
         margin-bottom: 0.5rem;
     }
+    .caution-box {
+        background-color: #FF8C00;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.3rem;
+        font-weight: 700;
+        font-size: 1.17rem;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
     .stop-box {
         background-color: #FF4B4B;
         color: white;
@@ -124,7 +134,6 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 일부 검색 기능용 상태 초기화
 if "partial_results" not in st.session_state:
     st.session_state.partial_results = None
 if "last_search_keyword" not in st.session_state:
@@ -146,31 +155,25 @@ def is_name_matched(master_name, target_text):
                 return True
     return False
 
+# 1. 기존 완벽 일치(STOP) 알고리즘
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
 
-    if m_clean in t_clean:
-        return True
-
+    if m_clean in t_clean: return True
     if not any(ch.isdigit() for ch in master_addr):
         base_text = master_addr.replace('*', '').replace(' ', '')
         return bool(base_text) and base_text in t_clean
 
     m_tokens = master_addr.split()
-    
     for m_token in m_tokens:
-        if '*' in m_token and m_token in target_addr:
-            continue
+        if '*' in m_token and m_token in target_addr: continue
             
         if any(ch.isdigit() or ch == '*' for ch in m_token):
             chars = []
             for ch in m_token:
-                if ch == '*':
-                    chars.append(r'\S')
-                else:
-                    chars.append(re.escape(ch))
-            
+                if ch == '*': chars.append(r'\S')
+                else: chars.append(re.escape(ch))
             flex_pattern = r'\s*'.join(chars)
             
             if m_token[0].isdigit() or m_token[0] == '*':
@@ -181,11 +184,44 @@ def is_address_matched(master_addr, target_addr):
             if not re.search(flex_pattern, target_addr):
                 return False
         else:
-            m_token_clean = m_token.replace(" ", "")
-            if m_token_clean not in t_clean:
+            if m_token.replace(" ", "") not in t_clean:
                 return False
-
     return True
+
+# 2. [신규 추가] 부분 일치 (CAUTION) 알고리즘
+def is_address_caution(master_addr, target_addr):
+    # 숫자가 아예 없는 순수 텍스트(헤트라스 등)는 부분 일치 검사 제외 (정확도 확보)
+    if not any(ch.isdigit() for ch in master_addr):
+        return False
+
+    t_clean = target_addr.replace(" ", "")
+    m_tokens = master_addr.split()
+    
+    # 단어가 3개 미만인 짧은 주소는 오탐 방지를 위해 CAUTION 생략
+    if len(m_tokens) < 3:
+        return False
+
+    match_count = 0
+    for m_token in m_tokens:
+        if '*' in m_token:
+            chars = [r'\S' if ch == '*' else re.escape(ch) for ch in m_token]
+            flex_pattern = r'\s*'.join(chars)
+            # CAUTION은 끝부분 누락 등도 허용해야 하므로 경계선 검증(?<!\S) 생략
+            if re.search(flex_pattern, target_addr):
+                match_count += 1
+        else:
+            if m_token.replace(" ", "") in t_clean:
+                match_count += 1
+
+    ratio = match_count / len(m_tokens)
+    
+    # [CAUTION 조건]
+    # 1. 3단어 이상 매칭되었고, 
+    # 2. 전체 마스터 주소의 65% 이상이 입력 주소에 포함되어 있거나, 혹은 딱 1단어만 누락된 경우
+    if match_count >= 3 and (ratio >= 0.65 or match_count >= len(m_tokens) - 1):
+        return True
+        
+    return False
 
 # --- 메인 UI 구성 ---
 st.markdown("<h2 style='font-size: 1.9rem;'>BLACK LIST</h2>", unsafe_allow_html=True)
@@ -277,7 +313,7 @@ with col_left:
 
     st.markdown("---")
     
-    # [새롭게 추가된 기능] 일부 검색 (부분 일치 검색)
+    # 일부 검색 (단어 검색 기능)
     st.markdown("**🔍 일부 검색** (단어 포함 리스트 찾기)")
     col_search1, col_search2 = st.columns([3, 1])
     with col_search1:
@@ -291,7 +327,6 @@ with col_left:
                 for idx, item in enumerate(st.session_state.master_addresses):
                     n = item.get("name", "")
                     ads = item.get("addresses", [])
-                    # 이름이나 주소 중 하나라도 검색어가 포함되어 있으면 추가
                     if keyword in n or any(keyword in a for a in ads):
                         found_items.append((idx + 1, item))
                 st.session_state.partial_results = found_items
@@ -299,7 +334,6 @@ with col_left:
                 st.session_state.partial_results = None
                 st.session_state.last_search_keyword = ""
                 
-    # 검색 결과창 렌더링
     if st.session_state.partial_results is not None:
         st.markdown(f"<span style='color:#FFD700; font-weight:bold;'>'{st.session_state.last_search_keyword}'</span> 검색 결과 ({len(st.session_state.partial_results)}건)", unsafe_allow_html=True)
         if len(st.session_state.partial_results) > 0:
@@ -308,7 +342,6 @@ with col_left:
                 for m_idx, m_item in st.session_state.partial_results:
                     m_name = m_item.get('name', '(이름 없음)')
                     st.markdown(f"<p style='margin:0; font-weight:bold;'>{m_idx}. <code>{m_name}</code></p>", unsafe_allow_html=True)
-                    
                     for addr in m_item.get('addresses', []):
                         st.markdown(f"<p style='margin:0 0 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                     st.markdown("<hr style='margin:4px 0; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
@@ -317,7 +350,7 @@ with col_left:
             
     st.markdown("---")
 
-    # 기존 블랙리스트 전체 목록 표시
+    # 블랙리스트 전체 목록 표시
     st.markdown(f"**블랙리스트 전체 목록 ({len(st.session_state.master_addresses)}건)**")
     
     if not st.session_state.master_addresses:
@@ -339,7 +372,7 @@ with col_left:
 
 
 with col_right:
-    st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트 (STOP / PASS 판독기)</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트 (STOP / CAUTION / PASS 판독기)</h4>", unsafe_allow_html=True)
     
     target_input = st.text_area(
         "대조할 주소 입력 (줄바꿈으로 여러 개 가능)",
@@ -357,31 +390,50 @@ with col_right:
             st.session_state.check_results = []
             
             for t in targets:
+                res_type = "PASS"
                 matched_item = None
                 matched_index = -1
                 
+                # 1. 완벽 일치 (STOP) 검증
                 for idx, item in enumerate(st.session_state.master_addresses):
                     item_name = item.get('name', '')
                     item_addrs = item.get('addresses', [])
                     
-                    if is_name_matched(item_name, t):
-                        matched_item = item
-                        matched_index = idx + 1
-                        break
-                    
                     is_matched = False
-                    for addr in item_addrs:
-                        if is_address_matched(addr, t):
-                            is_matched = True
-                            break
-                            
+                    if is_name_matched(item_name, t):
+                        is_matched = True
+                    else:
+                        for addr in item_addrs:
+                            if is_address_matched(addr, t):
+                                is_matched = True
+                                break
+                                
                     if is_matched:
+                        res_type = "STOP"
                         matched_item = item
                         matched_index = idx + 1
                         break
                 
+                # 2. 부분 일치 (CAUTION) 검증 (STOP이 아닐 때만 실행)
+                if res_type == "PASS":
+                    for idx, item in enumerate(st.session_state.master_addresses):
+                        item_addrs = item.get('addresses', [])
+                        
+                        is_caution = False
+                        for addr in item_addrs:
+                            if is_address_caution(addr, t):
+                                is_caution = True
+                                break
+                                
+                        if is_caution:
+                            res_type = "CAUTION"
+                            matched_item = item
+                            matched_index = idx + 1
+                            break
+                
+                # 결과 기록
                 if matched_item:
-                    st.session_state.check_results.append(("STOP", t, matched_index, matched_item))
+                    st.session_state.check_results.append((res_type, t, matched_index, matched_item))
                     if (matched_index, matched_item) not in st.session_state.matched_details_list:
                         st.session_state.matched_details_list.append((matched_index, matched_item))
                 else:
@@ -389,15 +441,20 @@ with col_right:
             
             st.rerun()
 
+    # 판정 결과 출력
     if st.session_state.check_results:
         for res_type, t_val, m_idx, m_item in st.session_state.check_results:
             if res_type == "STOP":
                 st.markdown('<div class="stop-box">STOP</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0; margin-bottom: 10px;'>{t_val}</p>", unsafe_allow_html=True)
+            elif res_type == "CAUTION":
+                st.markdown('<div class="caution-box">CAUTION (주소 일부 일치 - 확인요망)</div>', unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top: 0; margin-bottom: 10px;'>{t_val}</p>", unsafe_allow_html=True)
             else:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0; margin-bottom: 10px;'>{t_val}</p>", unsafe_allow_html=True)
 
+    # 매칭/주의 금지 목록 상세 전용 창
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
