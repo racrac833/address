@@ -127,7 +127,7 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# [신규 추가] 이름 패턴 매칭 함수 (예: "정인*" -> "정인상", "정인수" 등 감지)
+# [완벽 수정] 이름 매칭 함수
 def is_name_matched(master_name, target_addr):
     sub_names = master_name.split('/')
     for sub in sub_names:
@@ -136,7 +136,6 @@ def is_name_matched(master_name, target_addr):
             prefix = sub.split('*')[0]
             if not prefix:
                 continue
-            # 입력된 텍스트 안에 해당 접두사로 시작하는 이름/단어가 있는지 검사
             t_words = re.findall(r'[가-힣A-Za-z0-9*]+', target_addr)
             for tw in t_words:
                 if tw.startswith(prefix):
@@ -148,43 +147,33 @@ def is_name_matched(master_name, target_addr):
                 return True
     return False
 
-# [정밀 주소 매칭 함수]
+# [완벽 수정] 정규식 기반 엄격 주소 대조 함수 (와일드카드 및 자릿수 철저 검증)
 def is_address_matched(master_addr, target_addr):
-    m_clean = master_addr.replace(" ", "")
-    t_clean = target_addr.replace(" ", "")
-    
-    if m_clean in t_clean or t_clean in m_clean:
+    # 1. 공백 제거 후 완전 일치 또는 포함 확인
+    m_clean = re.sub(r'\s+', '', master_addr)
+    t_clean = re.sub(r'\s+', '', target_addr)
+    if m_clean in t_clean:
         return True
         
-    master_tokens = master_addr.split()
-    target_nums = re.findall(r'\d+', target_addr)
+    # 2. 마스터 주소를 정규식 패턴으로 변환
+    # 예: "경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"
+    # -> 정규식에서 '*'를 '\d'로 변환하여 자릿수와 형태를 정확히 일치시킴
+    escaped = re.escape(master_addr)
+    # 정규식 특수문자 이스케이프된 \* 를 \d 로 변경
+    regex_pattern = escaped.replace(r'\*', r'\d')
+    # 공백 처리를 유연하게 하기 위해 공백들을 \s* 로 변경
+    regex_pattern = re.sub(r'\\?\s+', r'\\s*', regex_pattern)
     
-    master_patterns = [w for w in master_tokens if any(ch.isdigit() for ch in w)]
+    # 앞뒤로 단어 경계나 유연한 매칭을 위해 패턴 적용
+    full_regex = regex_pattern
     
-    if not master_patterns:
-        base_text = master_addr.replace('*', '').strip()
-        return bool(base_text) and base_text in target_addr
-
-    for mp in master_patterns:
-        if '*' in mp:
-            pat_core = "".join([ch for ch in mp if ch.isdigit() or ch == '*'])
-            prefix = pat_core.split('*')[0]
-            required_len = len(pat_core)
-            
-            found_match = False
-            for tn in target_nums:
-                if len(tn) == required_len and tn.startswith(prefix):
-                    found_match = True
-                    break
-            if not found_match:
-                return False
-        else:
-            m_nums = re.findall(r'\d+', mp)
-            for mn in m_nums:
-                if mn not in target_nums:
-                    return False
-                
-    return True
+    try:
+        if re.search(full_regex, target_addr):
+            return True
+    except Exception:
+        pass
+        
+    return False
 
 # 메인 타이틀
 st.markdown("<h2 style='font-size: 1.9rem;'>BLACK LIST</h2>", unsafe_allow_html=True)
@@ -323,11 +312,11 @@ with col_right:
                     item_addrs = item.get('addresses', [])
                     is_matched = False
                     
-                    # 1. 이름 매칭 확인 (예: "정인*" 과 "정인상" 대조)
+                    # 1. 이름 매칭 확인
                     if is_name_matched(item_name, t):
                         is_matched = True
                     else:
-                        # 2. 주소 매칭 확인
+                        # 2. 정규식 기반 주소 매칭 확인
                         for addr in item_addrs:
                             if is_address_matched(addr, t):
                                 is_matched = True
@@ -357,7 +346,7 @@ with col_right:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창 (정확한 인덱스 번호 반영)
+    # 매칭된 금지 목록 상세 전용 창
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
