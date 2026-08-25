@@ -123,21 +123,24 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
+# [이름 매칭 완벽 수정] 별표(*) 갯수만큼 정확히 자릿수를 검사 (예: 우지* -> "우지"는 패스, "우지원"은 스탑)
 def is_name_matched(master_name, target_text):
     for sub in master_name.split('/'):
         sub = sub.strip()
         if not sub:
             continue
         if '*' in sub:
-            prefix = sub.split('*')[0]
-            if prefix and prefix in target_text:
+            # 별표 한 개당 반드시 1개의 글자(한글, 영문, 숫자)가 붙어있어야만 매칭되도록 정규식 강제 지정
+            escaped = re.escape(sub)
+            regex_pattern = escaped.replace(r'\*', r'[가-힣A-Za-z0-9]')
+            if re.search(regex_pattern, target_text):
                 return True
         else:
             if sub in target_text:
                 return True
     return False
 
-# [완벽 수정] "520-2"까지만 매칭되고 뚫리는 오탐을 차단하는 궁극의 함수
+# [주소 매칭 완벽 수정] 520-25 오탐 방지 등 자릿수 및 경계 검증 
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
@@ -169,18 +172,17 @@ def is_address_matched(master_addr, target_addr):
             # 글자 사이 띄어쓰기 유연 허용
             flex_pattern = r'\s*'.join(chars)
             
-            # [핵심] 52*-* 가 520-25 의 앞부분(520-2)만 부분 매칭하는 것을 방지
-            # 패턴이 숫자로 시작/끝나면 바로 앞/뒤에 또 다른 숫자가 붙어있을 수 없게 차단
+            # [핵심] 패턴이 숫자로 시작/끝나면 바로 앞/뒤에 또 다른 숫자가 붙어있을 수 없게 차단
             if m_token[0].isdigit() or m_token[0] == '*':
                 flex_pattern = r'(?<!\d)' + flex_pattern
             if m_token[-1].isdigit() or m_token[-1] == '*':
                 flex_pattern = flex_pattern + r'(?!\d)'
                 
-            # target_addr 자체에서 유연하게 검색 (부분 매칭 원천 차단됨)
+            # target_addr 자체에서 유연하게 검색
             if not re.search(flex_pattern, target_addr):
                 return False
         else:
-            # 4. 순수 텍스트 토큰 (예: "양정동") 검사
+            # 4. 순수 텍스트 토큰 검사
             m_token_clean = m_token.replace(" ", "")
             if m_token_clean not in t_clean:
                 return False
