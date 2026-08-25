@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 기본 금지 리스트 데이터 자동 세팅 (이름 + 여러 줄 주소 지원 구조)
+# 기본 금지 리스트 데이터 자동 세팅
 initial_data = [
     {"name": "강민*", "addresses": ["경기 의정부시 배꽃길 63 지식산업센터"]},
     {"name": "강아*", "addresses": ["경상북도 칠곡군 왜관읍 금산로3길"]},
@@ -69,9 +69,18 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동"]}
 ]
 
-# 세션 상태 초기화
+# 세션 상태 초기화 및 데이터 호환성 보정
 if "master_addresses" not in st.session_state or not st.session_state.master_addresses:
     st.session_state.master_addresses = initial_data.copy()
+else:
+    # 기존 세션에 예전 데이터 구조('address')가 섞여있어도 에러 안 나게 자동 변환
+    for item in st.session_state.master_addresses:
+        if "addresses" not in item:
+            if "address" in item:
+                item["addresses"] = [item["address"]] if item["address"] else []
+                del item["address"]
+            else:
+                item["addresses"] = []
 
 st.title("🔍 주소 대조 및 스마트 관리 프로그램")
 st.markdown("이름과 기준 주소를 관리하고 신규 주소와 대조하는 프로그램입니다.")
@@ -85,7 +94,7 @@ with col_left:
     
     # 대량 등록 영역
     with st.expander("📥 구글 시트 대량 한 번에 등록하기 (클릭해서 열기)", expanded=False):
-        st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요. (이름과 지번/도로명 주소 자동 인식)")
+        st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요.")
         bulk_input = st.text_area("대량 데이터 입력", placeholder="이름, 주소 형식으로 입력", height=100, key="input_bulk")
         
         if st.button("🚀 대량 데이터 일괄 등록", use_container_width=True, key="btn_bulk_add"):
@@ -105,7 +114,6 @@ with col_left:
                         st.session_state.master_addresses.append(item)
                         count += 1
                     else:
-                        # 콤마가 없고 주소 형태인 경우 직전 항목의 아랫줄(도로명 등)로 추가, 아니면 독립된 이름으로 추가
                         if st.session_state.master_addresses and any(k in line_str for k in ["시", "구", "군", "동", "읍", "면", "리", "로", "길", "대로", "번지", "APT", "아파트", "층", "호"]):
                             prev_item = st.session_state.master_addresses[-1]
                             prev_item["addresses"].append(line_str)
@@ -138,15 +146,15 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        # 스크롤 가능한 박스 안에서 이름과 여러 줄 주소(지번/도로명) 완벽 출력
         list_container = st.container(height=400)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
-                name_display = item['name'] if item['name'] else "(이름 없음)"
+                name_display = item.get('name', '(이름 없음)')
                 st.markdown(f"**{i+1}. {name_display}**")
                 
-                if item['addresses']:
-                    for addr in item['addresses']:
+                addrs = item.get('addresses', [])
+                if addrs:
+                    for addr in addrs:
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 {addr}")
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 (등록된 주소 없음)")
@@ -174,12 +182,12 @@ with col_right:
             for t in targets:
                 matched_item = None
                 for item in st.session_state.master_addresses:
-                    # 등록된 주소들 중 하나라도 포함되는지 확인
-                    if item["addresses"] and any(addr in t or t in addr for addr in item["addresses"]):
+                    item_addrs = item.get('addresses', [])
+                    if item_addrs and any(addr in t or t in addr for addr in item_addrs):
                         matched_item = item
                         break
                 
                 if matched_item:
-                    st.error(f"🛑 **STOP** | `{t}` ➡️ **[금지된 이름: {matched_item['name']}]**")
+                    st.error(f"🛑 **STOP** | `{t}` ➡️ **[금지된 이름: {matched_item.get('name', '알 수 없음')}]**")
                 else:
                     st.success(f"🟢 **PASS** | `{t}` (신규 주소)")
