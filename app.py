@@ -260,7 +260,7 @@ with col_right:
                             
                     if is_matched:
                         matched_item = item
-                        matched_index = idx + 1  # 1부터 시작하는 리스트 번호
+                        matched_index = idx + 1
                         break
                 
                 if matched_item:
@@ -272,24 +272,23 @@ with col_right:
             
             st.rerun()
 
-    # 판정 결과 출력 영역
+    # 판정 결과 출력 영역 (STOP을 크고 진하게, 아랫줄에 입력한 주소 그대로 출력)
     if st.session_state.check_results:
         st.markdown("**대조 결과 판정**")
         for res_type, t_val, m_idx, m_item in st.session_state.check_results:
             if res_type == "STOP":
-                m_name = m_item.get('name', '알 수 없음')
-                st.error(f"**STOP** | `{t_val}` ➡️ **[{m_idx}. {m_name}]**")
+                st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 0px;'>STOP</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: bold;'>{t_val}</p>", unsafe_allow_html=True)
             else:
                 st.success(f"**PASS** | `{t_val}` (신규 주소)")
 
-    # 매칭된 금지 목록 상세 전용 창 (리스트 형식 그대로 출력)
+    # 매칭된 금지 목록 상세 전용 창
     if st.session_state.matched_details_list:
         st.markdown("**매칭된 금지 목록 상세 정보**")
         match_container = st.container(height=220)
         with match_container:
             for m_idx, m_item in st.session_state.matched_details_list:
                 m_name = m_item.get('name', '(이름 없음)')
-                # 리스트와 정확히 동일한 형식 (숫자. 이름) 출력
                 st.markdown(f"<p style='margin:0px 0px 0px 0px; font-weight:bold;'>{m_idx}. <code>{m_name}</code></p>", unsafe_allow_html=True)
                 
                 m_addrs = m_item.get('addresses', [])
