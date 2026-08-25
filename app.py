@@ -126,7 +126,7 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# [완벽 수정] 와일드카드 패턴과 입력된 숫자를 1:1 정밀 대응시키는 매칭 함수
+# [완벽 수정] 숫자가 포함된 패턴만 엄격하게 자릿수 검증하는 매칭 함수
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
@@ -135,23 +135,24 @@ def is_address_matched(master_addr, target_addr):
         return True
         
     master_tokens = master_addr.split()
-    target_tokens = target_addr.split()
     target_nums = re.findall(r'\d+', target_addr)
     
-    # 숫자나 와일드카드가 포함된 토큰만 추출
-    master_patterns = [w for w in master_tokens if any(ch.isdigit() or ch == '*' for ch in w)]
+    # 반드시 숫자가 포함된 토큰만 패턴으로 인정 (*** 같은 순수 텍스트/기호 오류 원천 차단)
+    master_patterns = [w for w in master_tokens if any(ch.isdigit() for ch in w)]
     
     if not master_patterns:
         base_text = master_addr.replace('*', '').strip()
         return bool(base_text) and base_text in target_addr
 
-    # 블랙리스트의 각 숫자/패턴 토큰이 입력 주소와 반드시 일치해야 함
+    # 블랙리스트의 각 숫자 패턴과 입력 주소의 숫자들을 1:1 대조
     for mp in master_patterns:
         if '*' in mp:
-            prefix = mp.split('*')[0]
-            required_len = len(mp)
+            # 예: "25**" -> 숫자와 '*'만 추출하여 자릿수 계산
+            digits_part = "".join([ch for ch in mp if ch.isdigit() or ch == '*'])
+            prefix = digits_part.split('*')[0]
+            required_len = len(digits_part)
             
-            # 입력된 숫자들 중 [길이가 같고] [접두사로 시작하는] 숫자가 있으면 통과
+            # 입력된 숫자 중 [글자 수(자릿수)가 정확히 일치]하고 [접두사로 시작]하는 숫자가 있어야 함
             found_match = False
             for tn in target_nums:
                 if len(tn) == required_len and tn.startswith(prefix):
@@ -160,7 +161,6 @@ def is_address_matched(master_addr, target_addr):
             if not found_match:
                 return False
         else:
-            # 일반 고정 숫자인 경우 입력된 숫자 목록에 정확히 포함되어야 함
             if mp not in target_nums:
                 return False
                 
@@ -331,7 +331,7 @@ with col_right:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창 (정확한 60번 인덱스 번호 반영)
+    # 매칭된 금지 목록 상세 전용 창 (정확한 60번 정인* 표시)
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
