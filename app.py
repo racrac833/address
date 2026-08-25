@@ -83,8 +83,8 @@ else:
             else:
                 item["addresses"] = []
 
-if "highlighted_indices" not in st.session_state:
-    st.session_state.highlighted_indices = set()
+if "matched_items_list" not in st.session_state:
+    st.session_state.matched_items_list = []
 
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
@@ -102,17 +102,15 @@ def is_address_matched(master_addr, target_addr):
         if not matched_road:
             return False
     
-    # 마스터 주소의 별표 포함된 번호 패턴 분석 (예: 7**)
     m_num_patterns = re.findall(r'\d+\**', master_addr)
     t_nums = re.findall(r'\d+', target_addr)
     
     if m_num_patterns and t_nums:
         for mp in m_num_patterns:
             if '*' in mp:
-                expected_len = len(mp)  # 전체 글자수 (예: 7** 이면 3자리)
-                prefix = mp.split('*')[0]  # 시작 숫자 (예: 7)
+                expected_len = len(mp)
+                prefix = mp.split('*')[0]
                 if prefix:
-                    # 입력된 번호 중 '시작 숫자로 시작하고', '마스터 패턴과 자릿수가 정확히 일치하는 번호'가 있는지 검증
                     has_matching_num = any(t_num.startswith(prefix) and len(t_num) == expected_len for t_num in t_nums)
                     if not has_matching_num:
                         return False
@@ -129,7 +127,6 @@ col_left, col_right = st.columns(2, gap="large")
 with col_left:
     st.subheader("📁 기준 금지 주소 관리 (좌측)")
     
-    # 대량 등록 영역
     with st.expander("📥 구글 시트 대량 한 번에 등록하기 (클릭해서 열기)", expanded=False):
         st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요.")
         bulk_input = st.text_area("대량 데이터 입력", placeholder="이름, 주소 형식으로 입력", height=100, key="input_bulk")
@@ -165,19 +162,18 @@ with col_left:
 
     st.markdown("---")
     
-    # 개별 등록 및 초기화 버튼
     col_b1, col_b2 = st.columns(2)
     with col_b1:
         if st.button("🔄 기본 데이터로 복구", use_container_width=True, key="btn_reset"):
             st.session_state.master_addresses = initial_data.copy()
-            st.session_state.highlighted_indices = set()
+            st.session_state.matched_items_list = []
             st.session_state.check_results = []
             st.success("기본 데이터가 로드되었습니다!")
             st.rerun()
     with col_b2:
         if st.button("🗑️ 전체 리스트 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
-            st.session_state.highlighted_indices = set()
+            st.session_state.matched_items_list = []
             st.session_state.check_results = []
             st.rerun()
 
@@ -187,28 +183,18 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        # 매칭된 항목이 맨 위로 오도록 리스트 정렬
-        matched_list = [item for i, item in enumerate(st.session_state.master_addresses) if i in st.session_state.highlighted_indices]
-        other_list = [item for i, item in enumerate(st.session_state.master_addresses) if i not in st.session_state.highlighted_indices]
-        display_items = matched_list + other_list
-        
         list_container = st.container(height=400)
         with list_container:
-            for item in display_items:
+            for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
-                is_matched = any(item == m_item for m_item in matched_list)
-                
-                if is_matched:
-                    st.markdown(f"**🚨 [매칭됨] {name_display}**")
-                else:
-                    st.markdown(f"**{name_display}**")
+                st.markdown(f"**{i+1}. `{name_display}`**")
                 
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        st.text(f"    📍 {addr}")
+                        st.text(f"    {addr}")
                 else:
-                    st.text(f"    📍 (등록된 주소 없음)")
+                    st.text(f"    (등록된 주소 없음)")
                     
                 st.markdown("---")
 
@@ -228,14 +214,13 @@ with col_right:
             st.warning("대조할 주소를 입력해주세요.")
         else:
             targets = [t.strip() for t in target_input.split("\n") if t.strip()]
-            st.session_state.highlighted_indices = set()
+            st.session_state.matched_items_list = []
             st.session_state.check_results = []
             
             for t in targets:
                 matched_item = None
-                matched_idx = -1
                 
-                for idx, item in enumerate(st.session_state.master_addresses):
+                for item in st.session_state.master_addresses:
                     item_addrs = item.get('addresses', [])
                     is_matched = False
                     
@@ -246,11 +231,11 @@ with col_right:
                             
                     if is_matched:
                         matched_item = item
-                        matched_idx = idx
                         break
                 
                 if matched_item:
-                    st.session_state.highlighted_indices.add(matched_idx)
+                    if matched_item not in st.session_state.matched_items_list:
+                        st.session_state.matched_items_list.append(matched_item)
                     st.session_state.check_results.append(("STOP", t, matched_item.get('name', '알 수 없음')))
                 else:
                     st.session_state.check_results.append(("PASS", t, ""))
@@ -265,3 +250,20 @@ with col_right:
                 st.error(f"🛑 **STOP** | `{t_val}` ➡️ **[금지된 이름: {m_name}]**")
             else:
                 st.success(f"🟢 **PASS** | `{t_val}` (신규 주소)")
+
+    # 🚨 매칭된 금지 목록 상세 전용 창 (우측 하단 별도 표시)
+    if st.session_state.matched_items_list:
+        st.markdown("---")
+        st.markdown("### 🚨 매칭된 금지 목록 상세 정보")
+        match_container = st.container(height=300)
+        with match_container:
+            for m_item in st.session_state.matched_items_list:
+                m_name = m_item.get('name', '(이름 없음)')
+                st.markdown(f"**🚨 [매칭됨] `{m_name}`**")
+                m_addrs = m_item.get('addresses', [])
+                if m_addrs:
+                    for addr in m_addrs:
+                        st.text(f"    {addr}")
+                else:
+                    st.text(f"    (등록된 주소 없음)")
+                st.markdown("---")
