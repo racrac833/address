@@ -60,7 +60,7 @@ initial_data = [
     {"name": "이해*", "addresses": ["대구 방촌동822-* 해** 행정**센터"]},
     {"name": "이현*", "addresses": ["서울특별시 서초구 서초대로77길 ** 8층 엘리베이터 앞", "인천광역시 서구 서곶로 120 2*8동 7*2호"]},
     {"name": "장승*", "addresses": ["경기도 의정부시 민락동 92*-* 의정부 더** 센텀스퀘어* 지식산업센터 3동 2**호"]},
-    {"name": "장현*/장호*", "addresses": ["서울특별시 강남구 역삼동 673-** 베**캠프 센터필드점"]},
+    {"name": "장현*/장호*", "addresses": ["서울특별시 강남구 역섬동 673-** 베**캠프 센터필드점"]},
     {"name": "정슬*", "addresses": ["강동구 양재대로98길 43-4* 2**호"]},
     {"name": "정용*", "addresses": ["울산광역시 북구 양정동 52*-* 1층"]},
     {"name": "정진*", "addresses": ["서울특별시 강서구 등촌동 6*8-5 아임20*0 등촌역 6*7호", "서울특별시 강서구 공항대로5*가길 14 6*7호"]},
@@ -89,11 +89,13 @@ if "matched_items_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 자릿수 및 패턴 일치 엄격 매칭 함수
+# 정밀 자릿수 및 와일드카드 패턴 매칭 함수
 def is_address_matched(master_addr, target_addr):
+    # 1. 완전히 똑같은 주소인 경우
     if master_addr in target_addr or target_addr in master_addr:
         return True
         
+    # 2. 도로명/건물명 키워드 검증
     m_words = master_addr.split()
     road_keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['로', '길', '동', '읍', '면', '리', '가', '센터', '아파트', '오피스텔', '빌딩', '타워']) and len(w.replace('*', '')) >= 2]
     
@@ -102,20 +104,27 @@ def is_address_matched(master_addr, target_addr):
         if not matched_road:
             return False
     
-    m_num_patterns = re.findall(r'\d+\**', master_addr)
-    t_nums = re.findall(r'\d+', target_addr)
+    # 3. 와일드카드(*)가 포함된 마스터 주소의 토큰들을 정규식 패턴으로 변환하여 검증
+    master_tokens = master_addr.split()
+    target_tokens = target_addr.split()
     
-    if m_num_patterns and t_nums:
-        for mp in m_num_patterns:
-            if '*' in mp:
-                expected_len = len(mp)
-                prefix = mp.split('*')[0]
-                if prefix:
-                    has_matching_num = any(t_num.startswith(prefix) and len(t_num) == expected_len for t_num in t_nums)
-                    if not has_matching_num:
-                        return False
-                        
-    return True if road_keywords else False
+    # 각 마스터 토큰 중 숫자가 포함된 패턴 검증
+    for m_token in master_tokens:
+        if '*' in m_token:
+            # 예: "2*4호" -> 정규식 패턴 "^2\d4호$" 로 변환 (별표를 정확히 1자리 숫자 \d 로 치환)
+            escaped_token = re.escape(m_token).replace(r'\*', r'\d')
+            pattern = f"^{escaped_token}$"
+            
+            # 입력된 주소의 토큰 중에 이 패턴과 정확히 일치하는 것이 있는지 확인
+            found_match = False
+            for t_token in target_tokens:
+                if re.match(pattern, t_token):
+                    found_match = True
+                    break
+            if not found_match:
+                return False  # 패턴(자릿수 및 특정 숫자 조합)이 일치하지 않으면 매칭 실패(PASS)
+                
+    return True if road_keywords or master_tokens else False
 
 st.title("🔍 주소 대조 및 스마트 관리 프로그램")
 st.markdown("이름과 기준 주소를 관리하고 신규 주소와 대조하는 프로그램입니다.")
