@@ -117,12 +117,14 @@ def is_address_matched(master_addr, target_addr):
                         
     return True if road_keywords else False
 
-st.title("🔍 주소 대조 및 스마트 관리 프로그램")
+# 메인 타이틀 (폰트 크기 30% 축소 적용 및 BLACK LIST로 변경)
+st.markdown("<h2 style='font-size: 1.9rem;'>BLACK LIST</h2>", unsafe_allow_html=True)
 
 col_left, col_right = st.columns(2, gap="medium")
 
 with col_left:
-    st.subheader("📁 기준 금지 주소 관리")
+    # 서브헤더 폰트 크기 20% 축소 적용 및 '블랙리스트'로 변경
+    st.markdown("<h4 style='font-size: 1.1rem;'>블랙리스트</h4>", unsafe_allow_html=True)
     
     with st.expander("📂 메모장(TXT) 다운로드 / 업로드", expanded=False):
         txt_content = ""
@@ -206,12 +208,12 @@ with col_left:
             st.session_state.check_results = []
             st.rerun()
 
-    st.markdown(f"**📋 등록된 금지 목록 ({len(st.session_state.master_addresses)}건)**")
+    # '블랙리스트 목록'으로 변경
+    st.markdown(f"**블랙리스트 목록 ({len(st.session_state.master_addresses)}건)**")
     
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        # 박스 높이를 550으로 넉넉히 하고 내부 마크다운/텍스트 간격을 타이트하게 조정
         list_container = st.container(height=550)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
@@ -221,14 +223,16 @@ with col_left:
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#555;'>📍 {addr}</p>", unsafe_allow_html=True)
+                        # 주소 글씨 색상을 밝은 흰색(#FFFFFF)으로 강제 지정
+                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#888;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
                     
-                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #eee;'>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
 
 with col_right:
-    st.subheader("⚡ 신규 주소 대조 검사")
+    # 서브헤더 폰트 크기 20% 축소 적용 및 '체크리스트'로 변경
+    st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트</h4>", unsafe_allow_html=True)
     
     target_input = st.text_area(
         "대조할 주소 입력 (줄바꿈으로 여러 개 가능)",
@@ -237,7 +241,8 @@ with col_right:
         height=180
     )
     
-    if st.button("🔍 대조 및 판정 실행", type="primary", use_container_width=True, key="btn_check"):
+    # 버튼 문구를 'CHECK'로 변경
+    if st.button("CHECK", type="primary", use_container_width=True, key="btn_check"):
         if not target_input.strip():
             st.warning("대조할 주소를 입력해주세요.")
         else:
@@ -279,7 +284,7 @@ with col_right:
             else:
                 st.success(f"🟢 **PASS** | `{t_val}` (신규 주소)")
 
-    # 🚨 매칭된 금지 목록 상세 전용 창
+    # 매칭된 금지 목록 상세 전용 창
     if st.session_state.matched_items_list:
         st.markdown("**🚨 매칭된 금지 목록 상세 정보**")
         match_container = st.container(height=220)
@@ -290,7 +295,8 @@ with col_right:
                 m_addrs = m_item.get('addresses', [])
                 if m_addrs:
                     for addr in m_addrs:
-                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#555;'>📍 {addr}</p>", unsafe_allow_html=True)
+                        # 매칭된 상세 정보 창의 주소 글씨도 흰색(#FFFFFF)으로 적용
+                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#888;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
-                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #eee;'>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
