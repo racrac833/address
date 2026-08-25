@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 
 st.set_page_config(
     page_title="주소 대조 및 스마트 관리 프로그램",
@@ -6,7 +7,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 이름과 주소의 별표(*) 기호가 원본 그대로 유지되는 금지 리스트 데이터
+# 원본 텍스트 그대로 적용된 금지 리스트 데이터
 initial_data = [
     {"name": "강민*", "addresses": ["경기 의정부시 배꽃길 63 지식산업센터 *동 2*4호"]},
     {"name": "강아*", "addresses": ["경상북도 칠곡군 왜관읍 금산로3길 ** 칠곡왜관******* 10*동 16**호"]},
@@ -82,6 +83,16 @@ else:
             else:
                 item["addresses"] = []
 
+# 주소에서 핵심 키워드(글자수 2자 이상, 별표 제외)를 추출하는 함수
+def get_clean_tokens(text):
+    clean_text = re.sub(r'[\,\.\(\)\~\#\/\-\~]', ' ', text)
+    tokens = []
+    for t in clean_text.split():
+        base_t = t.replace('*', '')
+        if len(base_t) >= 2:
+            tokens.append(base_t)
+    return set(tokens)
+
 st.title("🔍 주소 대조 및 스마트 관리 프로그램")
 st.markdown("이름과 기준 주소를 관리하고 신규 주소와 대조하는 프로그램입니다.")
 
@@ -150,7 +161,6 @@ with col_left:
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
-                # 이름의 별표(*) 기호가 마크다운에 의해 변형되지 않도록 코드(백틱) 형태로 감싸서 출력
                 st.markdown(f"**{i+1}. `{name_display}`**")
                 
                 addrs = item.get('addresses', [])
@@ -181,10 +191,26 @@ with col_right:
             
             st.markdown("### 🚦 대조 결과 판정")
             for t in targets:
+                target_tokens = get_clean_tokens(t)
                 matched_item = None
+                
                 for item in st.session_state.master_addresses:
                     item_addrs = item.get('addresses', [])
-                    if item_addrs and any(addr in t or t in addr for addr in item_addrs):
+                    is_matched = False
+                    
+                    for addr in item_addrs:
+                        addr_tokens = get_clean_tokens(addr)
+                        # 공통으로 겹치는 핵심 키워드가 2개 이상이거나 (예: 하남시 + 망월동 등)
+                        common_tokens = target_tokens.intersection(addr_tokens)
+                        if len(common_tokens) >= 2:
+                            is_matched = True
+                            break
+                        # 기존처럼 포함 관계(substring)가 맞는 경우
+                        if addr in t or t in addr:
+                            is_matched = True
+                            break
+                            
+                    if is_matched:
                         matched_item = item
                         break
                 
