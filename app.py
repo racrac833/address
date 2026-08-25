@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import re
 
 st.set_page_config(
@@ -86,6 +87,9 @@ else:
 if "highlighted_indices" not in st.session_state:
     st.session_state.highlighted_indices = set()
 
+if "check_results" not in st.session_state:
+    st.session_state.check_results = []
+
 # 스마트 번호 비교 매칭 함수
 def is_address_matched(master_addr, target_addr):
     if master_addr in target_addr or target_addr in master_addr:
@@ -165,12 +169,14 @@ with col_left:
         if st.button("🔄 기본 데이터로 복구", use_container_width=True, key="btn_reset"):
             st.session_state.master_addresses = initial_data.copy()
             st.session_state.highlighted_indices = set()
+            st.session_state.check_results = []
             st.success("기본 데이터가 로드되었습니다!")
             st.rerun()
     with col_b2:
         if st.button("🗑️ 전체 리스트 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
             st.session_state.highlighted_indices = set()
+            st.session_state.check_results = []
             st.rerun()
 
     st.markdown("---")
@@ -179,7 +185,6 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        # 매칭된 항목이 있으면 해당 위치로 스크롤 이동하도록 HTML 앵커 컴포넌트 활용
         scroll_to_idx = min(st.session_state.highlighted_indices) if st.session_state.highlighted_indices else -1
         
         list_container = st.container(height=400)
@@ -188,20 +193,10 @@ with col_left:
                 name_display = item.get('name', '(이름 없음)')
                 is_matched = i in st.session_state.highlighted_indices
                 
-                # 매칭된 항목은 앵커 태그를 심어두어 브라우저가 해당 위치로 스크롤을 이동시킴
+                # 매칭된 항목 강조 표시 및 HTML ID 부여
                 if is_matched:
                     st.markdown(f'<div id="match_item_{i}"></div>', unsafe_allow_html=True)
-                    st.markdown(f"**🚨 {i+1}. `{name_display}` (매칭됨!)**", help="신규 주소와 일치하는 금지 항목입니다.")
-                    if scroll_to_idx == i:
-                        # 자바스크립트를 이용해 해당 위치로 자동 스크롤 점프
-                        st.html(f"""
-                            <script>
-                                const el = document.getElementById("match_item_{i}");
-                                if (el) {{
-                                    el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                                }}
-                            </script>
-                        """)
+                    st.markdown(f"**🚨 {i+1}. `{name_display}` (매칭됨!)**")
                 else:
                     st.markdown(f"**{i+1}. `{name_display}`**")
                 
@@ -213,6 +208,18 @@ with col_left:
                     st.text(f"    📍 (등록된 주소 없음)")
                     
                 st.markdown("---")
+                
+        # 자바스크립트를 이용해 매칭된 위치로 부드럽게 자동 스크롤 이동
+        if scroll_to_idx != -1:
+            components.html(f"""
+                <script>
+                    const doc = window.parent.document;
+                    const el = doc.getElementById("match_item_{scroll_to_idx}");
+                    if (el) {{
+                        el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                    }}
+                </script>
+            """, height=0)
 
 with col_right:
     st.subheader("⚡ 신규 주소 대조 검사 (우측)")
@@ -230,7 +237,8 @@ with col_right:
             st.warning("대조할 주소를 입력해주세요.")
         else:
             targets = [t.strip() for t in target_input.split("\n") if t.strip()]
-            st.session_state.highlighted_indices = set()  # 검사 실행 시 초기화
+            st.session_state.highlighted_indices = set()
+            st.session_state.check_results = []
             
             for t in targets:
                 matched_item = None
@@ -252,11 +260,17 @@ with col_right:
                 
                 if matched_item:
                     st.session_state.highlighted_indices.add(matched_idx)
+                    st.session_state.check_results.append(("STOP", t, matched_item.get('name', '알 수 없음')))
+                else:
+                    st.session_state.check_results.append(("PASS", t, ""))
             
-            # 즉시 화면을 갱신하여 첫 번째 클릭만으로 결과와 스크롤 이동이 반영되도록 함
             st.rerun()
 
-# 판정 결과 출력 (rerun 이후 상태 유지된 결과 렌더링)
-if st.session_state.highlighted_indices or "btn_check" in st.session_state:
-    # 이미 버튼을 눌러 실행된 상태의 결과 하단 표시 영역
-    pass
+    # 판정 결과 출력 영역
+    if st.session_state.check_results:
+        st.markdown("### 🚦 대조 결과 판정")
+        for res_type, t_val, m_name in st.session_state.check_results:
+            if res_type == "STOP":
+                st.error(f"🛑 **STOP** | `{t_val}` ➡️ **[금지된 이름: {m_name}]**")
+            else:
+                st.success(f"🟢 **PASS** | `{t_val}` (신규 주소)")
