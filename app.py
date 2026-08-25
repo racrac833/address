@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 세션 상태 초기화
+# 세션이 꼬여서 화면이 안 바뀌던 문제를 해결하기 위해 기존 상태 초기화 로직 보완
 if "master_addresses" not in st.session_state:
     st.session_state.master_addresses = []
 
@@ -23,7 +23,7 @@ col_left, col_right = st.columns(2, gap="large")
 with col_left:
     st.subheader("📁 기준 금지 주소 관리 (좌측)")
     
-    # 1. 대량 텍스트 등록 영역 (눈에 바로 보이게 배치)
+    # 대량 등록 영역
     with st.expander("📥 구글 시트 대량 한 번에 등록하기 (클릭해서 열기)", expanded=True):
         st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요. (형식: `이름, 주소`)")
         bulk_input = st.text_area("대량 데이터 입력", placeholder="강민*, 경기 의정부시 배꽃길 63...\n강아*, 경상북도 칠곡군...", height=100, key="input_bulk")
@@ -48,7 +48,7 @@ with col_left:
 
     st.markdown("---")
     
-    # 2. 개별 등록 영역
+    # 개별 등록 영역
     st.markdown("#### ➕ 개별 주소 추가")
     new_name_input = st.text_input("이름 (상호명/고객명)", placeholder="예: 홍길동", key="input_name")
     new_master_input = st.text_input("기준 주소", placeholder="예: 서울특별시 성동구 성수일로 10", key="input_addr")
