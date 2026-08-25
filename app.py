@@ -74,6 +74,17 @@ initial_data = [
 # CSS 스타일 정의
 st.markdown("""
     <style>
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
+        background-color: #FFD700 !important;
+        color: #000000 !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 0.3rem !important;
+        font-weight: 700 !important;
+        font-size: 1.17rem !important;
+        height: auto !important;
+        width: 100% !important;
+        border: none !important;
+    }
     .pass-box {
         background-color: #1E90FF;
         color: white;
@@ -115,7 +126,7 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# [핵심] 자릿수(길이)와 와일드카드 패턴을 완벽히 일치시키는 엄격 정밀 매칭 함수
+# 정밀하고 엄격한 자릿수/패턴 매칭 함수 (와일드카드 자릿수 불일치 오류 해결)
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
@@ -123,40 +134,31 @@ def is_address_matched(master_addr, target_addr):
     if m_clean in t_clean or t_clean in m_clean:
         return True
         
-    # 1. 핵심 지명 키워드 매칭 (동, 로, 길, 단지, 아파트 등)
-    m_words = master_addr.split()
-    keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['시', '구', '군', '동', '읍', '면', '리', '로', '길', '단지', '센터', '아파트']) and len(w.replace('*', '')) >= 2]
+    master_tokens = master_addr.split()
+    target_words = target_addr.split()
     
-    if keywords:
-        matched_kw = any(kw in target_addr for kw in keywords)
-        if not matched_kw:
+    # 숫자 패턴 추출 (예: 11**, 25** 등)
+    master_patterns = [w for w in master_tokens if any(ch.isdigit() or ch == '*' for ch in w)]
+    
+    if not master_patterns:
+        # 숫자가 없는 항목은 텍스트가 정확히 포함될 때만 매칭 (오류 방지)
+        base_text = master_addr.replace('*', '').strip()
+        return bool(base_text) and base_text in target_addr
+
+    for mp in master_patterns:
+        # 와일드카드(*)를 정규식 자릿수(\d)로 변환하여 자릿수까지 엄격하게 비교
+        # 예: "25**호" -> "^25\d{2}호$" (25로 시작하는 4자리 숫자여야만 일치)
+        escaped = re.escape(mp).replace(r'\*', r'\d')
+        regex_pattern = "^" + escaped + "$"
+        
+        matched = False
+        for tw in target_words:
+            if re.match(regex_pattern, tw):
+                matched = True
+                break
+        if not matched:
             return False
             
-    # 2. 마스터 주소의 숫자 패턴(와일드카드 포함) 추출
-    # 예: "11**", "30*", "25**" 등
-    m_patterns = re.findall(r'\b\d*[\*]+\d*|\b\d+\b', master_addr)
-    # 실제 입력된 주소의 모든 독립된 숫자들 추출
-    target_nums = re.findall(r'\d+', target_addr)
-    
-    # 3. 각 패턴별 자릿수(길이) 및 접두사 엄격 대조
-    for mp in m_patterns:
-        if '*' in mp:
-            required_len = len(mp)
-            prefix = mp.split('*')[0]
-            
-            # 입력된 숫자들 중 [자릿수가 정확히 일치]하고 [접두사로 시작]하는 숫자가 있는지 검사
-            found_match = False
-            for tn in target_nums:
-                if len(tn) == required_len and tn.startswith(prefix):
-                    found_match = True
-                    break
-            if not found_match:
-                return False
-        else:
-            # 일반 고정 숫자인 경우 자릿수와 값이 완전히 일치하는 숫자가 있어야 함
-            if mp not in target_nums:
-                return False
-                
     return True
 
 # 메인 타이틀
@@ -302,7 +304,7 @@ with col_right:
                             
                     if is_matched:
                         matched_item = item
-                        matched_index = idx + 1  # 1번부터 시작하는 정확한 리스트 번호
+                        matched_index = idx + 1
                         break
                 
                 if matched_item:
@@ -324,7 +326,7 @@ with col_right:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창 (정확한 60번 인덱스 반영)
+    # 매칭된 금지 목록 상세 전용 창 (정확한 60번 인덱스 번호 반영)
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
