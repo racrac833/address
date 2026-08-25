@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 원본 텍스트 그대로 적용된 금지 리스트 데이터
+# 이름과 주소의 별표(*) 기호가 원본 그대로 유지되는 금지 리스트 데이터
 initial_data = [
     {"name": "강민*", "addresses": ["경기 의정부시 배꽃길 63 지식산업센터 *동 2*4호"]},
     {"name": "강아*", "addresses": ["경상북도 칠곡군 왜관읍 금산로3길 ** 칠곡왜관******* 10*동 16**호"]},
@@ -150,12 +150,12 @@ with col_left:
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
-                st.markdown(f"**{i+1}. {name_display}**")
+                # 이름의 별표(*) 기호가 마크다운에 의해 변형되지 않도록 코드(백틱) 형태로 감싸서 출력
+                st.markdown(f"**{i+1}. `{name_display}`**")
                 
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        # st.text를 사용하여 특수문자나 별(*) 기호가 마크다운에 의해 숨겨지지 않고 원본 그대로 출력되도록 함
                         st.text(f"    📍 {addr}")
                 else:
                     st.text(f"    📍 (등록된 주소 없음)")
