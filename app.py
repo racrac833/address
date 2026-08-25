@@ -51,7 +51,7 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
     {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
@@ -83,13 +83,21 @@ else:
             else:
                 item["addresses"] = []
 
-# 주소에서 핵심 키워드(글자수 2자 이상, 별표 제외)를 추출하는 함수
-def get_clean_tokens(text):
+# 광역 행정구역명(광역단위, 시/구 이름 등 흔히 겹치는 단어)은 제외하고 진짜 핵심 주소 키워드만 추출
+def get_meaningful_tokens(text):
     clean_text = re.sub(r'[\,\.\(\)\~\#\/\-\~]', ' ', text)
+    ignore_words = {
+        '서울특별시', '서울시', '서울', '경기도', '경기', '인천광역시', '인천시', '인천',
+        '부산광역시', '부산시', '부산', '대구광역시', '대구시', '대구', '광주광역시', '광주시', '광주',
+        '울산광역시', '울산시', '울산', '대전광역시', '대전시', '대전', '세종특별자치시', '세종시',
+        '경상북도', '경북', '경상남도', '경남', '충청남도', '충남', '충청북도', '충북',
+        '전라북도', '전북', '전라남도', '전남', '강원도', '강원', '제주특별자치도', '제주',
+        '구', '시', '군', '동', '읍', '면', '리'
+    }
     tokens = []
     for t in clean_text.split():
         base_t = t.replace('*', '')
-        if len(base_t) >= 2:
+        if len(base_t) >= 2 and base_t not in ignore_words:
             tokens.append(base_t)
     return set(tokens)
 
@@ -191,7 +199,7 @@ with col_right:
             
             st.markdown("### 🚦 대조 결과 판정")
             for t in targets:
-                target_tokens = get_clean_tokens(t)
+                target_tokens = get_meaningful_tokens(t)
                 matched_item = None
                 
                 for item in st.session_state.master_addresses:
@@ -199,14 +207,16 @@ with col_right:
                     is_matched = False
                     
                     for addr in item_addrs:
-                        addr_tokens = get_clean_tokens(addr)
-                        # 공통으로 겹치는 핵심 키워드가 2개 이상이거나 (예: 하남시 + 망월동 등)
-                        common_tokens = target_tokens.intersection(addr_tokens)
-                        if len(common_tokens) >= 2:
+                        addr_tokens = get_meaningful_tokens(addr)
+                        
+                        # 1. 완전한 문자열 포함 관계가 성립할 때
+                        if addr in t or t in addr:
                             is_matched = True
                             break
-                        # 기존처럼 포함 관계(substring)가 맞는 경우
-                        if addr in t or t in addr:
+                            
+                        # 2. 광역 행정구역을 제외한 '진짜 핵심 키워드'가 2개 이상 겹칠 때 (예: 뚝섬로 + 특정 번호/건물명 등)
+                        common_tokens = target_tokens.intersection(addr_tokens)
+                        if len(common_tokens) >= 2:
                             is_matched = True
                             break
                             
