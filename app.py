@@ -51,7 +51,7 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
     {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
@@ -118,20 +118,13 @@ def is_address_matched(master_addr, target_addr):
     return True if road_keywords else False
 
 st.title("🔍 주소 대조 및 스마트 관리 프로그램")
-st.markdown("이름과 기준 주소를 관리하고 신규 주소와 대조하는 프로그램입니다.")
 
-st.divider()
-
-col_left, col_right = st.columns(2, gap="large")
+col_left, col_right = st.columns(2, gap="medium")
 
 with col_left:
-    st.subheader("📁 기준 금지 주소 관리 (좌측)")
+    st.subheader("📁 기준 금지 주소 관리")
     
-    # 📥 텍스트 파일(메모장) 다운로드 및 업로드 기능 영역
-    with st.expander("📂 메모장(TXT) 파일로 다운로드 및 일괄 수정 (클릭해서 열기)", expanded=False):
-        st.markdown("현재 등록된 금지 목록을 메모장 파일로 다운로드하거나, 수정된 파일을 업로드하여 일괄 반영할 수 있습니다.")
-        
-        # 현재 리스트를 텍스트 형식으로 변환 (이름, 주소 형태)
+    with st.expander("📂 메모장(TXT) 다운로드 / 업로드", expanded=False):
         txt_content = ""
         for item in st.session_state.master_addresses:
             name = item.get("name", "")
@@ -142,21 +135,17 @@ with col_left:
             else:
                 txt_content += f"{name},\n"
                 
-        # 다운로드 버튼
         st.download_button(
-            label="💾 금지 목록 메모장 다운로드 (.txt)",
+            label="💾 다운로드 (.txt)",
             data=txt_content,
             file_name="forbidden_addresses.txt",
             mime="text/plain",
             use_container_width=True
         )
         
-        st.markdown("---")
-        
-        # 업로드 영역
-        uploaded_file = st.file_uploader("수정된 메모장 파일(.txt) 업로드", type=["txt"])
+        uploaded_file = st.file_uploader("수정된 파일 업로드", type=["txt"])
         if uploaded_file is not None:
-            if st.button("🚀 업로드한 파일로 목록 일괄 덮어쓰기", use_container_width=True, type="primary"):
+            if st.button("🚀 업로드 파일로 덮어쓰기", use_container_width=True, type="primary"):
                 try:
                     file_bytes = uploaded_file.getvalue()
                     file_text = file_bytes.decode("utf-8")
@@ -176,7 +165,6 @@ with col_left:
                             name_val = parts[0].strip()
                             addr_val = parts[1].strip()
                             
-                            # 같은 이름이 연속되거나 신규 이름일 경우 처리
                             if current_name and current_name != name_val:
                                 new_master_data.append({"name": current_name, "addresses": current_addrs})
                                 current_name = name_val
@@ -199,37 +187,32 @@ with col_left:
                         st.session_state.master_addresses = new_master_data
                         st.session_state.matched_items_list = []
                         st.session_state.check_results = []
-                        st.success(f"총 {len(new_master_data)}건의 금지 목록이 성공적으로 일괄 반영되었습니다!")
+                        st.success(f"총 {len(new_master_data)}건 반영 완료!")
                         st.rerun()
-                    else:
-                        st.warning("파일에서 올바른 데이터를 읽지 못했습니다.")
                 except Exception as e:
-                    st.error(f"파일 처리 중 오류가 발생했습니다: {e}")
+                    st.error(f"오류 발생: {e}")
 
-    st.markdown("---")
-    
     col_b1, col_b2 = st.columns(2)
     with col_b1:
-        if st.button("🔄 기본 데이터로 복구", use_container_width=True, key="btn_reset"):
+        if st.button("🔄 기본 복구", use_container_width=True, key="btn_reset"):
             st.session_state.master_addresses = initial_data.copy()
             st.session_state.matched_items_list = []
             st.session_state.check_results = []
-            st.success("기본 데이터가 로드되었습니다!")
             st.rerun()
     with col_b2:
-        if st.button("🗑️ 전체 리스트 비우기", use_container_width=True, key="btn_clear"):
+        if st.button("🗑️ 전체 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
             st.session_state.matched_items_list = []
             st.session_state.check_results = []
             st.rerun()
 
-    st.markdown("---")
-    st.markdown(f"### 📋 현재 등록된 금지 목록 ({len(st.session_state.master_addresses)}건)")
+    st.markdown(f"**📋 등록된 금지 목록 ({len(st.session_state.master_addresses)}건)**")
     
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        list_container = st.container(height=400)
+        # 박스 높이를 550으로 넉넉히 하고 내부 마크다운/텍스트 간격을 타이트하게 조정
+        list_container = st.container(height=550)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
@@ -238,21 +221,20 @@ with col_left:
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        st.text(f"    {addr}")
+                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#555;'>📍 {addr}</p>", unsafe_allow_html=True)
                 else:
-                    st.text(f"    (등록된 주소 없음)")
+                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#888;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
                     
-                st.markdown("---")
+                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #eee;'>", unsafe_allow_html=True)
 
 with col_right:
-    st.subheader("⚡ 신규 주소 대조 검사 (우측)")
-    st.markdown("검사할 주소를 입력하면 왼쪽 기준 리스트와 대조하여 결과를 표시합니다.")
+    st.subheader("⚡ 신규 주소 대조 검사")
     
     target_input = st.text_area(
         "대조할 주소 입력 (줄바꿈으로 여러 개 가능)",
         placeholder="서울특별시 성동구 성수일로 10\n강남구 테헤란로 123",
         key="target_textarea",
-        height=250
+        height=180
     )
     
     if st.button("🔍 대조 및 판정 실행", type="primary", use_container_width=True, key="btn_check"):
@@ -290,18 +272,17 @@ with col_right:
 
     # 판정 결과 출력 영역
     if st.session_state.check_results:
-        st.markdown("### 🚦 대조 결과 판정")
+        st.markdown("**🚦 대조 결과 판정**")
         for res_type, t_val, m_name in st.session_state.check_results:
             if res_type == "STOP":
                 st.error(f"🛑 **STOP** | `{t_val}` ➡️ **[금지된 이름: {m_name}]**")
             else:
                 st.success(f"🟢 **PASS** | `{t_val}` (신규 주소)")
 
-    # 🚨 매칭된 금지 목록 상세 전용 창 (우측 하단 별도 표시)
+    # 🚨 매칭된 금지 목록 상세 전용 창
     if st.session_state.matched_items_list:
-        st.markdown("---")
-        st.markdown("### 🚨 매칭된 금지 목록 상세 정보")
-        match_container = st.container(height=300)
+        st.markdown("**🚨 매칭된 금지 목록 상세 정보**")
+        match_container = st.container(height=220)
         with match_container:
             for m_item in st.session_state.matched_items_list:
                 m_name = m_item.get('name', '(이름 없음)')
@@ -309,7 +290,7 @@ with col_right:
                 m_addrs = m_item.get('addresses', [])
                 if m_addrs:
                     for addr in m_addrs:
-                        st.text(f"    {addr}")
+                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#555;'>📍 {addr}</p>", unsafe_allow_html=True)
                 else:
-                    st.text(f"    (등록된 주소 없음)")
-                st.markdown("---")
+                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#888;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #eee;'>", unsafe_allow_html=True)
