@@ -51,7 +51,7 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
     {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
@@ -83,23 +83,35 @@ else:
             else:
                 item["addresses"] = []
 
-# 광역 행정구역명(광역단위, 시/구 이름 등 흔히 겹치는 단어)은 제외하고 진짜 핵심 주소 키워드만 추출
-def get_meaningful_tokens(text):
-    clean_text = re.sub(r'[\,\.\(\)\~\#\/\-\~]', ' ', text)
-    ignore_words = {
-        '서울특별시', '서울시', '서울', '경기도', '경기', '인천광역시', '인천시', '인천',
-        '부산광역시', '부산시', '부산', '대구광역시', '대구시', '대구', '광주광역시', '광주시', '광주',
-        '울산광역시', '울산시', '울산', '대전광역시', '대전시', '대전', '세종특별자치시', '세종시',
-        '경상북도', '경북', '경상남도', '경남', '충청남도', '충남', '충청북도', '충북',
-        '전라북도', '전북', '전라남도', '전남', '강원도', '강원', '제주특별자치도', '제주',
-        '구', '시', '군', '동', '읍', '면', '리'
-    }
-    tokens = []
-    for t in clean_text.split():
-        base_t = t.replace('*', '')
-        if len(base_t) >= 2 and base_t not in ignore_words:
-            tokens.append(base_t)
-    return set(tokens)
+if "highlighted_indices" not in st.session_state:
+    st.session_state.highlighted_indices = set()
+
+# 스마트 번호 비교 매칭 함수
+def is_address_matched(master_addr, target_addr):
+    if master_addr in target_addr or target_addr in master_addr:
+        return True
+        
+    m_words = master_addr.split()
+    road_keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['로', '길', '동', '읍', '면', '리', '가', '센터', '아파트', '오피스텔', '빌딩', '타워']) and len(w.replace('*', '')) >= 2]
+    
+    if road_keywords:
+        matched_road = any(rk in target_addr for rk in road_keywords)
+        if not matched_road:
+            return False
+    
+    m_num_patterns = re.findall(r'\d+\**', master_addr)
+    t_nums = re.findall(r'\d+', target_addr)
+    
+    if m_num_patterns and t_nums:
+        for mp in m_num_patterns:
+            if '*' in mp:
+                prefix = mp.split('*')[0]
+                if prefix:
+                    has_matching_num = any(t_num.startswith(prefix) for t_num in t_nums)
+                    if not has_matching_num:
+                        return False
+                        
+    return True if road_keywords else False
 
 st.title("🔍 주소 대조 및 스마트 관리 프로그램")
 st.markdown("이름과 기준 주소를 관리하고 신규 주소와 대조하는 프로그램입니다.")
@@ -152,11 +164,13 @@ with col_left:
     with col_b1:
         if st.button("🔄 기본 데이터로 복구", use_container_width=True, key="btn_reset"):
             st.session_state.master_addresses = initial_data.copy()
+            st.session_state.highlighted_indices = set()
             st.success("기본 데이터가 로드되었습니다!")
             st.rerun()
     with col_b2:
         if st.button("🗑️ 전체 리스트 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
+            st.session_state.highlighted_indices = set()
             st.rerun()
 
     st.markdown("---")
@@ -169,7 +183,13 @@ with col_left:
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
-                st.markdown(f"**{i+1}. `{name_display}`**")
+                is_matched = i in st.session_state.highlighted_indices
+                
+                # STOP 판정으로 매칭된 항목은 불꽃 아이콘과 함께 강조 표시
+                if is_matched:
+                    st.markdown(f"**🔥 {i+1}. `{name_display}` (매칭됨!)**")
+                else:
+                    st.markdown(f"**{i+1}. `{name_display}`**")
                 
                 addrs = item.get('addresses', [])
                 if addrs:
@@ -196,35 +216,29 @@ with col_right:
             st.warning("대조할 주소를 입력해주세요.")
         else:
             targets = [t.strip() for t in target_input.split("\n") if t.strip()]
+            st.session_state.highlighted_indices = set()  # 검사 실행 시 초기화
             
             st.markdown("### 🚦 대조 결과 판정")
             for t in targets:
-                target_tokens = get_meaningful_tokens(t)
                 matched_item = None
+                matched_idx = -1
                 
-                for item in st.session_state.master_addresses:
+                for idx, item in enumerate(st.session_state.master_addresses):
                     item_addrs = item.get('addresses', [])
                     is_matched = False
                     
                     for addr in item_addrs:
-                        addr_tokens = get_meaningful_tokens(addr)
-                        
-                        # 1. 완전한 문자열 포함 관계가 성립할 때
-                        if addr in t or t in addr:
-                            is_matched = True
-                            break
-                            
-                        # 2. 광역 행정구역을 제외한 '진짜 핵심 키워드'가 2개 이상 겹칠 때 (예: 뚝섬로 + 특정 번호/건물명 등)
-                        common_tokens = target_tokens.intersection(addr_tokens)
-                        if len(common_tokens) >= 2:
+                        if is_address_matched(addr, t):
                             is_matched = True
                             break
                             
                     if is_matched:
                         matched_item = item
+                        matched_idx = idx
                         break
                 
                 if matched_item:
+                    st.session_state.highlighted_indices.add(matched_idx)
                     st.error(f"🛑 **STOP** | `{t}` ➡️ **[금지된 이름: {matched_item.get('name', '알 수 없음')}]**")
                 else:
                     st.success(f"🟢 **PASS** | `{t}` (신규 주소)")
