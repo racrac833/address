@@ -108,6 +108,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# 세션 상태 초기화
 if "master_addresses" not in st.session_state or not st.session_state.master_addresses:
     st.session_state.master_addresses = initial_data.copy()
 else:
@@ -123,6 +124,13 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
+# 일부 검색 기능용 상태 초기화
+if "partial_results" not in st.session_state:
+    st.session_state.partial_results = None
+if "last_search_keyword" not in st.session_state:
+    st.session_state.last_search_keyword = ""
+
+# --- 매칭 함수들 ---
 def is_name_matched(master_name, target_text):
     for sub in master_name.split('/'):
         sub = sub.strip()
@@ -159,15 +167,12 @@ def is_address_matched(master_addr, target_addr):
             chars = []
             for ch in m_token:
                 if ch == '*':
-                    # 핵심 수정: \d(숫자) -> \S(공백 제외 모든 문자)로 변경
-                    # 이로써 "****타워" (한글), "9**" (숫자) 모두 해당 자릿수만큼 정확하게 매칭 가능
                     chars.append(r'\S')
                 else:
                     chars.append(re.escape(ch))
             
             flex_pattern = r'\s*'.join(chars)
             
-            # 앞뒤 다른 글자가 붙어서 자릿수가 늘어나는 오탐을 방지하는 경계선 처리
             if m_token[0].isdigit() or m_token[0] == '*':
                 flex_pattern = r'(?<!\S)' + flex_pattern
             if m_token[-1].isdigit() or m_token[-1] == '*':
@@ -182,6 +187,7 @@ def is_address_matched(master_addr, target_addr):
 
     return True
 
+# --- 메인 UI 구성 ---
 st.markdown("<h2 style='font-size: 1.9rem;'>BLACK LIST</h2>", unsafe_allow_html=True)
 
 col_left, col_right = st.columns(2, gap="medium")
@@ -247,6 +253,7 @@ with col_left:
                         st.session_state.master_addresses = new_master_data
                         st.session_state.matched_details_list = []
                         st.session_state.check_results = []
+                        st.session_state.partial_results = None
                         st.success(f"총 {len(new_master_data)}건 반영 완료!")
                         st.rerun()
                 except Exception as e:
@@ -258,20 +265,65 @@ with col_left:
             st.session_state.master_addresses = initial_data.copy()
             st.session_state.matched_details_list = []
             st.session_state.check_results = []
+            st.session_state.partial_results = None
             st.rerun()
     with col_b2:
         if st.button("전체 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
             st.session_state.matched_details_list = []
             st.session_state.check_results = []
+            st.session_state.partial_results = None
             st.rerun()
 
-    st.markdown(f"**블랙리스트 목록 ({len(st.session_state.master_addresses)}건)**")
+    st.markdown("---")
+    
+    # [새롭게 추가된 기능] 일부 검색 (부분 일치 검색)
+    st.markdown("**🔍 일부 검색** (단어 포함 리스트 찾기)")
+    col_search1, col_search2 = st.columns([3, 1])
+    with col_search1:
+        search_keyword = st.text_input("단어 입력", placeholder="예: 구로구", label_visibility="collapsed")
+    with col_search2:
+        if st.button("검색", use_container_width=True, key="btn_partial_search"):
+            keyword = search_keyword.strip()
+            if keyword:
+                st.session_state.last_search_keyword = keyword
+                found_items = []
+                for idx, item in enumerate(st.session_state.master_addresses):
+                    n = item.get("name", "")
+                    ads = item.get("addresses", [])
+                    # 이름이나 주소 중 하나라도 검색어가 포함되어 있으면 추가
+                    if keyword in n or any(keyword in a for a in ads):
+                        found_items.append((idx + 1, item))
+                st.session_state.partial_results = found_items
+            else:
+                st.session_state.partial_results = None
+                st.session_state.last_search_keyword = ""
+                
+    # 검색 결과창 렌더링
+    if st.session_state.partial_results is not None:
+        st.markdown(f"<span style='color:#FFD700; font-weight:bold;'>'{st.session_state.last_search_keyword}'</span> 검색 결과 ({len(st.session_state.partial_results)}건)", unsafe_allow_html=True)
+        if len(st.session_state.partial_results) > 0:
+            search_container = st.container(height=200)
+            with search_container:
+                for m_idx, m_item in st.session_state.partial_results:
+                    m_name = m_item.get('name', '(이름 없음)')
+                    st.markdown(f"<p style='margin:0; font-weight:bold;'>{m_idx}. <code>{m_name}</code></p>", unsafe_allow_html=True)
+                    
+                    for addr in m_item.get('addresses', []):
+                        st.markdown(f"<p style='margin:0 0 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
+                    st.markdown("<hr style='margin:4px 0; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
+        else:
+            st.info("일치하는 결과가 없습니다.")
+            
+    st.markdown("---")
+
+    # 기존 블랙리스트 전체 목록 표시
+    st.markdown(f"**블랙리스트 전체 목록 ({len(st.session_state.master_addresses)}건)**")
     
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        list_container = st.container(height=550)
+        list_container = st.container(height=400)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
@@ -285,8 +337,9 @@ with col_left:
                     st.markdown(f"<p style='margin:0 0 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
                 st.markdown("<hr style='margin:4px 0; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
 
+
 with col_right:
-    st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트 (STOP / PASS 판독기)</h4>", unsafe_allow_html=True)
     
     target_input = st.text_area(
         "대조할 주소 입력 (줄바꿈으로 여러 개 가능)",
