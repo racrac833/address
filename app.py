@@ -71,6 +71,37 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
+# 스타일 지정 (CHECK 버튼 노란색, PASS 파란색)
+st.markdown("""
+    <style>
+    .stButton > button {
+        background-color: #FFD700 !important;
+        color: #000000 !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        height: 3rem !important;
+    }
+    .pass-box {
+        background-color: #1E90FF;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.3rem;
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    .stop-box {
+        background-color: #FF4B4B;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.3rem;
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 세션 상태 초기화 및 데이터 호환성 보정
 if "master_addresses" not in st.session_state or not st.session_state.master_addresses:
     st.session_state.master_addresses = initial_data.copy()
@@ -237,7 +268,7 @@ with col_right:
         height=180
     )
     
-    if st.button("CHECK", type="primary", use_container_width=True, key="btn_check"):
+    if st.button("CHECK", use_container_width=True, key="btn_check"):
         if not target_input.strip():
             st.warning("대조할 주소를 입력해주세요.")
         else:
@@ -272,19 +303,18 @@ with col_right:
             
             st.rerun()
 
-    # 판정 결과 출력 영역 (STOP을 크고 진하게, 아랫줄에 입력한 주소 그대로 출력)
+    # 판정 결과 출력 영역 (박스 디자인 적용)
     if st.session_state.check_results:
-        st.markdown("**대조 결과 판정**")
         for res_type, t_val, m_idx, m_item in st.session_state.check_results:
             if res_type == "STOP":
-                st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 0px;'>STOP</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: bold;'>{t_val}</p>", unsafe_allow_html=True)
+                st.markdown('<div class="stop-box">STOP</div>', unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
             else:
-                st.success(f"**PASS** | `{t_val}` (신규 주소)")
+                st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창
+    # 매칭된 금지 목록 상세 전용 창 (제목 문구 삭제)
     if st.session_state.matched_details_list:
-        st.markdown("**매칭된 금지 목록 상세 정보**")
         match_container = st.container(height=220)
         with match_container:
             for m_idx, m_item in st.session_state.matched_details_list:
