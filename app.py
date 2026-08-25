@@ -2,7 +2,7 @@ import streamlit as st
 import re
 
 st.set_page_config(
-    page_title="주소 대조 및 스마트 관리 프로그램",
+    page_title="BLACK LIST",
     page_icon="🔍",
     layout="wide"
 )
@@ -74,8 +74,7 @@ initial_data = [
 # CSS 스타일 정의 (CHECK 버튼 노란색 배경 및 STOP/PASS 박스 크기·두께 완벽 일치)
 st.markdown("""
     <style>
-    /* CHECK 버튼을 STOP/PASS 박스와 동일한 크기(1.17rem), 굵기(700), 노란색 배경으로 설정 */
-    div.stButton > button {
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
         background-color: #FFD700 !important;
         color: #000000 !important;
         padding: 0.5rem 1rem !important;
@@ -127,13 +126,15 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 정밀 주소 매칭 함수
+# 스마트 와일드카드 주소 매칭 함수
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
+    
     if m_clean in t_clean or t_clean in m_clean:
         return True
         
+    # 1. 핵심 지명 키워드 매칭 (동, 로, 길, 단지, 아파트, 시, 구 등)
     m_words = master_addr.split()
     keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['시', '구', '군', '동', '읍', '면', '리', '로', '길', '단지', '센터', '아파트']) and len(w.replace('*', '')) >= 2]
     
@@ -142,26 +143,24 @@ def is_address_matched(master_addr, target_addr):
         if not matched_kw:
             return False
             
-    master_tokens = master_addr.split()
-    target_nums = re.findall(r'\d+', target_addr)
+    # 2. 마스터 주소의 숫자/와일드카드 패턴 추출
+    m_num_patterns = re.findall(r'(\d+[\*]+|\d+)', master_addr)
+    t_nums = re.findall(r'\d+', target_addr)
     
-    for m_token in master_tokens:
-        if '*' in m_token:
-            num_pattern_part = "".join([ch for ch in m_token if ch.isdigit() or ch == '*'])
-            if num_pattern_part:
-                prefix = num_pattern_part.split('*')[0]
-                length = len(num_pattern_part)
-                
-                found_num_match = any(t.startswith(prefix) and len(t) == length for t in target_nums)
-                if not found_num_match:
-                    return False
+    # 3. 각 패턴 검증
+    for mp in m_num_patterns:
+        if '*' in mp:
+            prefix = mp.split('*')[0]
+            expected_len = len(mp)
+            # 접두사가 일치하고 전체 자릿수가 같은 숫자가 하나라도 있으면 매칭 성공
+            has_match = any(tn.startswith(prefix) and len(tn) == expected_len for tn in t_nums)
+            if not has_match:
+                return False
         else:
-            m_nums = re.findall(r'\d+', m_token)
-            if m_nums:
-                for mn in m_nums:
-                    if mn not in target_nums:
-                        return False
-                        
+            # 고정 숫자인 경우 입력 주소에 해당 숫자가 있어야 함
+            if mp not in t_nums:
+                return False
+                
     return True
 
 # 메인 타이틀
@@ -284,7 +283,6 @@ with col_right:
         height=180
     )
     
-    # 안정적인 st.button을 사용한 CHECK 버튼
     if st.button("CHECK", use_container_width=True, key="btn_check"):
         if not target_input.strip():
             st.warning("대조할 주소를 입력해주세요.")
@@ -317,6 +315,8 @@ with col_right:
                         st.session_state.matched_details_list.append((matched_index, matched_item))
                 else:
                     st.session_state.check_results.append(("PASS", t, 0, None))
+            
+            st.rerun()
 
     # 판정 결과 출력 영역 (중앙 정렬된 STOP / PASS 박스)
     if st.session_state.check_results:
