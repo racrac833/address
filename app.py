@@ -83,8 +83,8 @@ else:
             else:
                 item["addresses"] = []
 
-if "matched_items_list" not in st.session_state:
-    st.session_state.matched_items_list = []
+if "matched_details_list" not in st.session_state:
+    st.session_state.matched_details_list = []
 
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
@@ -186,7 +186,7 @@ with col_left:
                         
                     if new_master_data:
                         st.session_state.master_addresses = new_master_data
-                        st.session_state.matched_items_list = []
+                        st.session_state.matched_details_list = []
                         st.session_state.check_results = []
                         st.success(f"총 {len(new_master_data)}건 반영 완료!")
                         st.rerun()
@@ -197,13 +197,13 @@ with col_left:
     with col_b1:
         if st.button("기본 복구", use_container_width=True, key="btn_reset"):
             st.session_state.master_addresses = initial_data.copy()
-            st.session_state.matched_items_list = []
+            st.session_state.matched_details_list = []
             st.session_state.check_results = []
             st.rerun()
     with col_b2:
         if st.button("전체 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
-            st.session_state.matched_items_list = []
+            st.session_state.matched_details_list = []
             st.session_state.check_results = []
             st.rerun()
 
@@ -242,13 +242,14 @@ with col_right:
             st.warning("대조할 주소를 입력해주세요.")
         else:
             targets = [t.strip() for t in target_input.split("\n") if t.strip()]
-            st.session_state.matched_items_list = []
+            st.session_state.matched_details_list = []
             st.session_state.check_results = []
             
             for t in targets:
                 matched_item = None
+                matched_index = -1
                 
-                for item in st.session_state.master_addresses:
+                for idx, item in enumerate(st.session_state.master_addresses):
                     item_addrs = item.get('addresses', [])
                     is_matched = False
                     
@@ -259,34 +260,38 @@ with col_right:
                             
                     if is_matched:
                         matched_item = item
+                        matched_index = idx + 1  # 1부터 시작하는 리스트 번호
                         break
                 
                 if matched_item:
-                    if matched_item not in st.session_state.matched_items_list:
-                        st.session_state.matched_items_list.append(matched_item)
-                    st.session_state.check_results.append(("STOP", t, matched_item.get('name', '알 수 없음')))
+                    st.session_state.check_results.append(("STOP", t, matched_index, matched_item))
+                    if (matched_index, matched_item) not in st.session_state.matched_details_list:
+                        st.session_state.matched_details_list.append((matched_index, matched_item))
                 else:
-                    st.session_state.check_results.append(("PASS", t, ""))
+                    st.session_state.check_results.append(("PASS", t, 0, None))
             
             st.rerun()
 
     # 판정 결과 출력 영역
     if st.session_state.check_results:
         st.markdown("**대조 결과 판정**")
-        for res_type, t_val, m_name in st.session_state.check_results:
+        for res_type, t_val, m_idx, m_item in st.session_state.check_results:
             if res_type == "STOP":
-                st.error(f"**STOP** | `{t_val}` ➡️ **[금지된 이름: {m_name}]**")
+                m_name = m_item.get('name', '알 수 없음')
+                st.error(f"**STOP** | `{t_val}` ➡️ **[{m_idx}. {m_name}]**")
             else:
                 st.success(f"**PASS** | `{t_val}` (신규 주소)")
 
-    # 매칭된 금지 목록 상세 전용 창
-    if st.session_state.matched_items_list:
+    # 매칭된 금지 목록 상세 전용 창 (리스트 형식 그대로 출력)
+    if st.session_state.matched_details_list:
         st.markdown("**매칭된 금지 목록 상세 정보**")
         match_container = st.container(height=220)
         with match_container:
-            for m_item in st.session_state.matched_items_list:
+            for m_idx, m_item in st.session_state.matched_details_list:
                 m_name = m_item.get('name', '(이름 없음)')
-                st.markdown(f"**[매칭됨] `{m_name}`**")
+                # 리스트와 정확히 동일한 형식 (숫자. 이름) 출력
+                st.markdown(f"<p style='margin:0px 0px 0px 0px; font-weight:bold;'>{m_idx}. <code>{m_name}</code></p>", unsafe_allow_html=True)
+                
                 m_addrs = m_item.get('addresses', [])
                 if m_addrs:
                     for addr in m_addrs:
