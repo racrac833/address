@@ -126,11 +126,12 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        # 스크롤 가능한 박스 안에 이름과 주소를 한 줄씩 깔끔하게 출력
+        # 스크롤 가능한 박스 안에서 이름과 주소를 2줄 간격으로 깔끔하게 출력
         list_container = st.container(height=400)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
-                st.markdown(f"**{i+1}. [{item['name']}]** {item['address']}")
+                st.markdown(f"**{i+1}. {item['name']}**\n\n&nbsp;&nbsp;&nbsp;&nbsp;📍 {item['address']}")
+                st.markdown("---")
 
 with col_right:
     st.subheader("⚡ 신규 주소 대조 검사 (우측)")
