@@ -71,14 +71,12 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# 스타일 지정 (CHECK 버튼 노란색, PASS 파란색)
+# CHECK 버튼과 PASS/STOP 박스 스타일 설정 (STOP 크기와 폰트 두께 동일 적용, 중앙 정렬)
 st.markdown("""
     <style>
-    .stButton > button {
-        background-color: #FFD700 !important;
-        color: #000000 !important;
-        font-weight: bold !important;
-        font-size: 1.1rem !important;
+    div.stButton > button:first-child {
+        font-size: 1.17rem !important;
+        font-weight: 700 !important;
         height: 3rem !important;
     }
     .pass-box {
@@ -86,8 +84,9 @@ st.markdown("""
         color: white;
         padding: 0.5rem 1rem;
         border-radius: 0.3rem;
-        font-weight: bold;
-        font-size: 1.1rem;
+        font-weight: 700;
+        font-size: 1.17rem;
+        text-align: center;
         margin-bottom: 0.5rem;
     }
     .stop-box {
@@ -95,8 +94,9 @@ st.markdown("""
         color: white;
         padding: 0.5rem 1rem;
         border-radius: 0.3rem;
-        font-weight: bold;
-        font-size: 1.1rem;
+        font-weight: 700;
+        font-size: 1.17rem;
+        text-align: center;
         margin-bottom: 0.5rem;
     }
     </style>
@@ -303,7 +303,7 @@ with col_right:
             
             st.rerun()
 
-    # 판정 결과 출력 영역 (박스 디자인 적용)
+    # 판정 결과 출력 영역 (중앙 정렬된 STOP / PASS 박스)
     if st.session_state.check_results:
         for res_type, t_val, m_idx, m_item in st.session_state.check_results:
             if res_type == "STOP":
@@ -313,7 +313,7 @@ with col_right:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창 (제목 문구 삭제)
+    # 매칭된 금지 목록 상세 전용 창
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
