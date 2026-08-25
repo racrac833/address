@@ -71,7 +71,6 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# CSS 스타일 정의
 st.markdown("""
     <style>
     div[data-testid="column"]:nth-of-type(2) div.stButton > button {
@@ -109,17 +108,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 세션 상태 초기화 및 데이터 호환성 보정
 if "master_addresses" not in st.session_state or not st.session_state.master_addresses:
     st.session_state.master_addresses = initial_data.copy()
 else:
     for item in st.session_state.master_addresses:
         if "addresses" not in item:
+            item["addresses"] = [item["address"]] if item.get("address") else []
             if "address" in item:
-                item["addresses"] = [item["address"]] if item["address"] else []
                 del item["address"]
-            else:
-                item["addresses"] = []
 
 if "matched_details_list" not in st.session_state:
     st.session_state.matched_details_list = []
@@ -127,48 +123,59 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 이름 매칭 함수
-def is_name_matched(master_name, target_addr):
-    sub_names = master_name.split('/')
-    for sub in sub_names:
+def is_name_matched(master_name, target_text):
+    for sub in master_name.split('/'):
         sub = sub.strip()
+        if not sub:
+            continue
         if '*' in sub:
             prefix = sub.split('*')[0]
-            if not prefix:
-                continue
-            t_words = re.findall(r'[가-힣A-Za-z0-9*]+', target_addr)
-            for tw in t_words:
-                if tw.startswith(prefix):
-                    return True
-            if prefix in target_addr:
+            if prefix and prefix in target_text:
                 return True
         else:
-            if sub and sub in target_addr:
+            if sub in target_text:
                 return True
     return False
 
-# [완벽 개선] 와일드카드(*)를 유연한 패턴(.*)으로 변환하여 별표와 실제 숫자가 섞여 있어도 완벽히 매칭하는 함수
+# [완벽 수정] 별표 갯수만큼 정확히 자릿수를 검증하는 궁극의 매칭 알고리즘
 def is_address_matched(master_addr, target_addr):
-    m_clean = re.sub(r'\s+', '', master_addr)
-    t_clean = re.sub(r'\s+', '', target_addr)
-    
+    m_clean = master_addr.replace(" ", "")
+    t_clean = target_addr.replace(" ", "")
+
     if m_clean in t_clean:
         return True
-        
-    # 마스터 주소의 '*'를 정규식 와일드카드 '.*'로 변환하여 어떤 문자/숫자든 유연하게 커버
-    escaped = re.escape(master_addr)
-    regex_pattern = escaped.replace(r'\*', r'.*')
-    regex_pattern = re.sub(r'\\?\s+', r'\\s*', regex_pattern)
-    
-    try:
-        if re.search(regex_pattern, target_addr):
-            return True
-    except Exception:
-        pass
-        
-    return False
 
-# 메인 타이틀
+    # 숫자가 없는 순수 텍스트(예: 헤트라스***) 처리
+    if not any(ch.isdigit() for ch in master_addr):
+        base_text = master_addr.replace('*', '').strip()
+        return bool(base_text) and base_text in target_addr
+
+    m_tokens = master_addr.split()
+    
+    for m_token in m_tokens:
+        if '*' in m_token:
+            # 타겟 주소에 11** 처럼 진짜 별표가 그대로 포함되어 있으면 패스 (입력값 유연성)
+            if m_token in target_addr or m_token in t_clean:
+                continue
+            
+            # 별표(*) 한 개당 정확히 숫자 1자리(\d)로 매칭하여 자릿수를 강제 고정
+            escaped_token = re.escape(m_token)
+            regex_pattern = escaped_token.replace(r'\*', r'\d')
+            
+            # 오탐 방지: "30*동"이 "1305동"에 걸리지 않도록 앞에 다른 숫자가 없음을 강제
+            if m_token[0].isdigit():
+                regex_pattern = r'(?<!\d)' + regex_pattern
+                
+            # 공백을 무시하고 붙여쓴 문자열(t_clean)에서 해당 자릿수의 패턴이 존재하는지 검색
+            if not re.search(regex_pattern, t_clean):
+                return False
+        else:
+            # 별표가 없는 고정 단어는 반드시 포함되어야 함
+            if m_token not in target_addr and m_token not in t_clean:
+                return False
+
+    return True
+
 st.markdown("<h2 style='font-size: 1.9rem;'>BLACK LIST</h2>", unsafe_allow_html=True)
 
 col_left, col_right = st.columns(2, gap="medium")
@@ -199,24 +206,19 @@ with col_left:
         if uploaded_file is not None:
             if st.button("업로드 파일로 덮어쓰기", use_container_width=True, type="primary"):
                 try:
-                    file_bytes = uploaded_file.getvalue()
-                    file_text = file_bytes.decode("utf-8")
-                    lines = file_text.splitlines()
-                    
+                    file_text = uploaded_file.getvalue().decode("utf-8")
                     new_master_data = []
                     current_name = None
                     current_addrs = []
                     
-                    for line in lines:
+                    for line in file_text.splitlines():
                         line_str = line.strip()
                         if not line_str:
                             continue
-                            
                         if "," in line_str:
                             parts = line_str.split(",", 1)
                             name_val = parts[0].strip()
                             addr_val = parts[1].strip()
-                            
                             if current_name and current_name != name_val:
                                 new_master_data.append({"name": current_name, "addresses": current_addrs})
                                 current_name = name_val
@@ -267,16 +269,15 @@ with col_left:
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
-                st.markdown(f"<p style='margin:0px 0px 0px 0px; font-weight:bold;'>{i+1}. <code>{name_display}</code></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin:0; font-weight:bold;'>{i+1}. <code>{name_display}</code></p>", unsafe_allow_html=True)
                 
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='margin:0 0 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
-                    
-                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:0 0 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin:4px 0; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
 
 with col_right:
     st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트</h4>", unsafe_allow_html=True)
@@ -303,17 +304,17 @@ with col_right:
                 for idx, item in enumerate(st.session_state.master_addresses):
                     item_name = item.get('name', '')
                     item_addrs = item.get('addresses', [])
-                    is_matched = False
                     
-                    # 1. 이름 매칭 확인
                     if is_name_matched(item_name, t):
-                        is_matched = True
-                    else:
-                        # 2. 정규식 기반 주소 매칭 확인
-                        for addr in item_addrs:
-                            if is_address_matched(addr, t):
-                                is_matched = True
-                                break
+                        matched_item = item
+                        matched_index = idx + 1
+                        break
+                    
+                    is_matched = False
+                    for addr in item_addrs:
+                        if is_address_matched(addr, t):
+                            is_matched = True
+                            break
                             
                     if is_matched:
                         matched_item = item
@@ -329,28 +330,26 @@ with col_right:
             
             st.rerun()
 
-    # 판정 결과 출력 영역 (중앙 정렬된 STOP / PASS 박스)
     if st.session_state.check_results:
         for res_type, t_val, m_idx, m_item in st.session_state.check_results:
             if res_type == "STOP":
                 st.markdown('<div class="stop-box">STOP</div>', unsafe_allow_html=True)
-                st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top: 0; margin-bottom: 10px;'>{t_val}</p>", unsafe_allow_html=True)
             else:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
-                st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top: 0; margin-bottom: 10px;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
             for m_idx, m_item in st.session_state.matched_details_list:
                 m_name = m_item.get('name', '(이름 없음)')
-                st.markdown(f"<p style='margin:0px 0px 0px 0px; font-weight:bold;'>{m_idx}. <code>{m_name}</code></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin:0; font-weight:bold;'>{m_idx}. <code>{m_name}</code></p>", unsafe_allow_html=True)
                 
                 m_addrs = m_item.get('addresses', [])
                 if m_addrs:
                     for addr in m_addrs:
-                        st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='margin:0 0 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
-                st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:0 0 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin:4px 0; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
