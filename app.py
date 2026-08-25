@@ -71,9 +71,21 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# CSS 스타일 정의 (노란색 CHECK 버튼 스타일 적용)
+# CSS 스타일 정의 (CHECK 버튼 노란색 배경 및 STOP/PASS 박스 크기·두께 완벽 일치)
 st.markdown("""
     <style>
+    /* CHECK 버튼을 STOP/PASS 박스와 동일한 크기(1.17rem), 굵기(700), 노란색 배경으로 설정 */
+    div.stButton > button {
+        background-color: #FFD700 !important;
+        color: #000000 !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 0.3rem !important;
+        font-weight: 700 !important;
+        font-size: 1.17rem !important;
+        height: auto !important;
+        width: 100% !important;
+        border: none !important;
+    }
     .pass-box {
         background-color: #1E90FF;
         color: white;
@@ -115,25 +127,21 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 완벽하게 개선된 주소 대조 및 매칭 함수 (공백 및 지명 오차 보정)
+# 정밀 주소 매칭 함수
 def is_address_matched(master_addr, target_addr):
-    # 공백 제거한 전체 문자열 비교 (완전 일치 또는 포함)
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
     if m_clean in t_clean or t_clean in m_clean:
         return True
         
-    # 핵심 지역/지명 키워드 추출 (2글자 이상인 명칭)
     m_words = master_addr.split()
     keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['시', '구', '군', '동', '읍', '면', '리', '로', '길', '단지', '센터', '아파트']) and len(w.replace('*', '')) >= 2]
     
     if keywords:
-        # 최소한 핵심 키워드 중 하나 이상이 입력 주소에 포함되어야 함
         matched_kw = any(kw in target_addr for kw in keywords)
         if not matched_kw:
             return False
             
-    # 숫자 및 와일드카드 패턴 정밀 대조
     master_tokens = master_addr.split()
     target_nums = re.findall(r'\d+', target_addr)
     
@@ -276,36 +284,8 @@ with col_right:
         height=180
     )
     
-    # 노란색 배경과 동일한 폰트 크기/두께가 적용된 커스텀 HTML CHECK 버튼
-    submitted = st.markdown("""
-        <form method="get">
-            <button type="submit" name="check_submitted" value="true" style="
-                background-color: #FFD700; 
-                color: #000000; 
-                padding: 0.5rem 1rem; 
-                border-radius: 0.3rem; 
-                font-weight: 700; 
-                font-size: 1.17rem; 
-                text-align: center; 
-                width: 100%; 
-                border: none; 
-                cursor: pointer;
-                margin-bottom: 1rem;
-            ">CHECK</button>
-        </form>
-    """, unsafe_allow_html=True)
-    
-    # URL 파라미터나 상태값을 통한 실행 트리거 처리
-    query_params = st.query_params
-    is_clicked = "check_submitted" in query_params or st.session_state.get("is_checked", False)
-    
-    if "check_submitted" in query_params:
-        st.session_state["is_checked"] = True
-        # 파라미터 정리
-        st.query_params.clear()
-        is_clicked = True
-
-    if is_clicked:
+    # 안정적인 st.button을 사용한 CHECK 버튼
+    if st.button("CHECK", use_container_width=True, key="btn_check"):
         if not target_input.strip():
             st.warning("대조할 주소를 입력해주세요.")
         else:
@@ -339,7 +319,7 @@ with col_right:
                     st.session_state.check_results.append(("PASS", t, 0, None))
 
     # 판정 결과 출력 영역 (중앙 정렬된 STOP / PASS 박스)
-    if st.session_state.get("check_results"):
+    if st.session_state.check_results:
         for res_type, t_val, m_idx, m_item in st.session_state.check_results:
             if res_type == "STOP":
                 st.markdown('<div class="stop-box">STOP</div>', unsafe_allow_html=True)
@@ -349,7 +329,7 @@ with col_right:
                 st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
     # 매칭된 금지 목록 상세 전용 창
-    if st.session_state.get("matched_details_list"):
+    if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
             for m_idx, m_item in st.session_state.matched_details_list:
