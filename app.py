@@ -6,67 +6,67 @@ st.set_page_config(
     layout="wide"
 )
 
-# 기본 금지 리스트 데이터 자동 세팅 (지번/도로명 여러 줄 구조 지원)
+# 기본 금지 리스트 데이터 자동 세팅 (이름 + 여러 줄 주소 지원 구조)
 initial_data = [
-    {"name": "강민*", "address": "경기 의정부시 배꽃길 63 지식산업센터"},
-    {"name": "강아*", "address": "경상북도 칠곡군 왜관읍 금산로3길"},
-    {"name": "구향*", "address": "경남 진주시 충무공동 혁신도시"},
-    {"name": "권시*/최수*", "address": "서울특별시 광진구 뚝섬로"},
-    {"name": "김관*", "address": "경기도 의정부시 용현로"},
-    {"name": "김낙*", "address": "경기도 안양시 박달로"},
-    {"name": "김명*/조명*", "address": "경기도 시흥시 은행로"},
-    {"name": "김문*", "address": "경기도 화성시 향남읍 발안로"},
-    {"name": "김민*", "address": "대구광역시 수성구 동대구로"},
-    {"name": "김민*", "address": "서울특별시 성동구 성수일로 10"},
-    {"name": "김성*/신선*", "address": "인천광역시 계양구 효성동"},
-    {"name": "김수*/최재*", "address": "경상북도 칠곡군 북삼읍 금오대로1길"},
-    {"name": "김승*", "address": "인천광역시 연수구 인천타워대로"},
-    {"name": "김아*", "address": "남양주시 평내동"},
-    {"name": "김예*", "address": "경기도 남양주시 진접읍 부평로"},
-    {"name": "김용*", "address": "경기도 고양시 덕양구 덕동"},
-    {"name": "김유*", "address": "인천광역시 서구 용해로"},
-    {"name": "김ㅎ", "address": "서울 동대문구 왕산로 68"},
-    {"name": "박주ㄹ(루ㅇ)", "address": "경기도 하남시 미사강변동로"},
-    {"name": "박교*", "address": "서울특별시 성동구 상원길 26"},
-    {"name": "박병*", "address": "서울특별시 영등포구 신길동"},
-    {"name": "박수*", "address": "서울특별시 성북구 보문로29다길"},
-    {"name": "박용*", "address": "부산광역시 수영구 광일로"},
-    {"name": "박종*", "address": "경기도 용인시 기흥구 흥덕2로"},
-    {"name": "박지*", "address": "경기도 화성시 향남읍 발안로"},
-    {"name": "배지*", "address": "경기도 안양시 동안구 경수대로84번길"},
-    {"name": "복영*", "address": "강서구 양천로"},
-    {"name": "서동*", "address": "인천광역시 서구 크리스탈로"},
-    {"name": "서현*", "address": "경기도 동두천시 송내동"},
-    {"name": "신명*", "address": "인천광역시 연수구 송도동"},
-    {"name": "신성*", "address": "경기도 김포시 장기동"},
-    {"name": "양기*", "address": "서울특별시 마포구 양화로"},
-    {"name": "양은*", "address": "경기도 수원시 영통구 망포동"},
-    {"name": "양현*", "address": "서울특별시 구로구 디지털로34길"},
-    {"name": "엄형*", "address": "경기도 화성시 향남읍 발안로"},
-    {"name": "우지*", "address": "경기도 용인시 기흥구 농서로"},
-    {"name": "윤현*", "address": "서울특별시 금천구 독산동"},
-    {"name": "이가*", "address": "경기도 화성시 우정읍 조암서로13번길"},
-    {"name": "이광*", "address": "충청남도 공주시 신풍면 봉갑리"},
-    {"name": "이미*", "address": "경기도 파주시 다율동"},
-    {"name": "이승*", "address": "경기도 성남시 분당구 정자동"},
-    {"name": "이영*", "address": "서울특별시 구로구 신도림동"},
-    {"name": "이원*/이은*", "address": "서울특별시 영등포구 디지털로70길"},
-    {"name": "이유*", "address": "광주광역시 서구 풍암동"},
-    {"name": "이주*/루*", "address": "경기도 하남시 미사강변동로"},
-    {"name": "이창*", "address": "인천광역시 서구 루원시티"},
-    {"name": "이해*", "address": "대구 방촌동"},
-    {"name": "이현*", "address": "서울특별시 서초구 서초대로77길"},
-    {"name": "이현*", "address": "인천광역시 서구 서곶로 120"},
-    {"name": "장승*", "address": "경기도 의정부시 민락동"},
-    {"name": "장현*/장호*", "address": "서울특별시 강남구 역삼동"},
-    {"name": "정슬*", "address": "강동구 양재대로98길"},
-    {"name": "정용*", "address": "울산광역시 북구 양정동"},
-    {"name": "정진*", "address": "서울특별시 강서구 등촌동"},
-    {"name": "정진*", "address": "서울특별시 강서구 공항대로"},
-    {"name": "조현*", "address": "경기도 수원시 장안구 조원동"},
-    {"name": "최재*", "address": "경기도 구리시 체육관로"},
-    {"name": "최진*", "address": "인천광역시 부평구 경원대로"},
-    {"name": "정인*", "address": "경기도 하남시 망월동"}
+    {"name": "강민*", "addresses": ["경기 의정부시 배꽃길 63 지식산업센터"]},
+    {"name": "강아*", "addresses": ["경상북도 칠곡군 왜관읍 금산로3길"]},
+    {"name": "구향*", "addresses": ["경남 진주시 충무공동 혁신도시"]},
+    {"name": "권시*/최수*", "addresses": ["서울특별시 광진구 뚝섬로"]},
+    {"name": "김관*", "addresses": ["경기도 의정부시 용현로"]},
+    {"name": "김낙*", "addresses": ["경기도 안양시 박달로"]},
+    {"name": "김명*/조명*", "addresses": ["경기도 시흥시 은행로"]},
+    {"name": "김문*", "addresses": ["경기도 화성시 향남읍 발안로"]},
+    {"name": "김민*", "addresses": ["대구광역시 수성구 동대구로"]},
+    {"name": "김민*", "addresses": ["서울특별시 성동구 성수일로 10"]},
+    {"name": "김성*/신선*", "addresses": ["인천광역시 계양구 효성동"]},
+    {"name": "김수*/최재*", "addresses": ["경상북도 칠곡군 북삼읍 금오대로1길"]},
+    {"name": "김승*", "addresses": ["인천광역시 연수구 인천타워대로"]},
+    {"name": "김아*", "addresses": ["남양주시 평내동"]},
+    {"name": "김예*", "addresses": ["경기도 남양주시 진접읍 부평로"]},
+    {"name": "김용*", "addresses": ["경기도 고양시 덕양구 덕동"]},
+    {"name": "김유*", "addresses": ["인천광역시 서구 용해로"]},
+    {"name": "김ㅎ", "addresses": ["서울 동대문구 왕산로 68"]},
+    {"name": "박주ㄹ(루ㅇ)", "addresses": ["경기도 하남시 미사강변동로"]},
+    {"name": "박교*", "addresses": ["서울특별시 성동구 상원길 26"]},
+    {"name": "박병*", "addresses": ["서울특별시 영등포구 신길동"]},
+    {"name": "박수*", "addresses": ["서울특별시 성북구 보문로29다길"]},
+    {"name": "박용*", "addresses": ["부산광역시 수영구 광일로"]},
+    {"name": "박종*", "addresses": ["경기도 용인시 기흥구 흥덕2로"]},
+    {"name": "박지*", "addresses": ["경기도 화성시 향남읍 발안로"]},
+    {"name": "배지*", "addresses": ["경기도 안양시 동안구 경수대로84번길"]},
+    {"name": "복영*", "addresses": ["강서구 양천로"]},
+    {"name": "서동*", "addresses": ["인천광역시 서구 크리스탈로"]},
+    {"name": "서현*", "addresses": ["경기도 동두천시 송내동"]},
+    {"name": "신명*", "addresses": ["인천광역시 연수구 송도동"]},
+    {"name": "신성*", "addresses": ["경기도 김포시 장기동"]},
+    {"name": "양기*", "addresses": ["서울특별시 마포구 양화로"]},
+    {"name": "양은*", "addresses": ["경기도 수원시 영통구 망포동"]},
+    {"name": "양현*", "addresses": ["서울특별시 구로구 디지털로34길"]},
+    {"name": "엄형*", "addresses": ["경기도 화성시 향남읍 발안로"]},
+    {"name": "우지*", "addresses": ["경기도 용인시 기흥구 농서로"]},
+    {"name": "윤현*", "addresses": ["서울특별시 금천구 독산동"]},
+    {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길"]},
+    {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리"]},
+    {"name": "이미*", "addresses": ["경기도 파주시 다율동"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동"]},
+    {"name": "이영*", "addresses": ["서울특별시 구로구 신도림동"]},
+    {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길"]},
+    {"name": "이유*", "addresses": ["광주광역시 서구 풍암동"]},
+    {"name": "이주*/루*", "addresses": ["경기도 하남시 미사강변동로"]},
+    {"name": "이창*", "addresses": ["인천광역시 서구 루원시티"]},
+    {"name": "이해*", "addresses": ["대구 방촌동"]},
+    {"name": "이현*", "addresses": ["서울특별시 서초구 서초대로77길"]},
+    {"name": "이현*", "addresses": ["인천광역시 서구 서곶로 120"]},
+    {"name": "장승*", "addresses": ["경기도 의정부시 민락동"]},
+    {"name": "장현*/장호*", "addresses": ["서울특별시 강남구 역삼동"]},
+    {"name": "정슬*", "addresses": ["강동구 양재대로98길"]},
+    {"name": "정용*", "addresses": ["울산광역시 북구 양정동"]},
+    {"name": "정진*", "addresses": ["서울특별시 강서구 등촌동"]},
+    {"name": "정진*", "addresses": ["서울특별시 강서구 공항대로"]},
+    {"name": "조현*", "addresses": ["경기도 수원시 장안구 조원동"]},
+    {"name": "최재*", "addresses": ["경기도 구리시 체육관로"]},
+    {"name": "최진*", "addresses": ["인천광역시 부평구 경원대로"]},
+    {"name": "정인*", "addresses": ["경기도 하남시 망월동"]}
 ]
 
 # 세션 상태 초기화
@@ -85,7 +85,7 @@ with col_left:
     
     # 대량 등록 영역
     with st.expander("📥 구글 시트 대량 한 번에 등록하기 (클릭해서 열기)", expanded=False):
-        st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요. (이름만 있거나, 주소가 여러 줄이어도 자동 인식됩니다.)")
+        st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요. (이름과 지번/도로명 주소 자동 인식)")
         bulk_input = st.text_area("대량 데이터 입력", placeholder="이름, 주소 형식으로 입력", height=100, key="input_bulk")
         
         if st.button("🚀 대량 데이터 일괄 등록", use_container_width=True, key="btn_bulk_add"):
@@ -101,20 +101,16 @@ with col_left:
                         parts = line_str.split(",", 1)
                         name_val = parts[0].strip()
                         addr_val = parts[1].strip()
-                        item = {"name": name_val, "address": addr_val}
+                        item = {"name": name_val, "addresses": [addr_val] if addr_val else []}
                         st.session_state.master_addresses.append(item)
                         count += 1
                     else:
-                        # 콤마가 없고 주소 형태인 경우 이전 항목의 추가 주소(도로명 등)로 결합, 아니면 이름만 있는 항목으로 추가
-                        if st.session_state.master_addresses and any(k in line_str for k in ["시", "구", "군", "동", "읍", "면", "리", "로", "길", "대로", "번지", "APT", "아파트"]):
+                        # 콤마가 없고 주소 형태인 경우 직전 항목의 아랫줄(도로명 등)로 추가, 아니면 독립된 이름으로 추가
+                        if st.session_state.master_addresses and any(k in line_str for k in ["시", "구", "군", "동", "읍", "면", "리", "로", "길", "대로", "번지", "APT", "아파트", "층", "호"]):
                             prev_item = st.session_state.master_addresses[-1]
-                            if prev_item["address"]:
-                                prev_item["address"] += "\n" + line_str
-                            else:
-                                prev_item["address"] = line_str
+                            prev_item["addresses"].append(line_str)
                         else:
-                            # 이름만 있는 경우 삭제하지 않고 그대로 등록
-                            item = {"name": line_str, "address": ""}
+                            item = {"name": line_str, "addresses": []}
                             st.session_state.master_addresses.append(item)
                             count += 1
                 st.success(f"총 {count}건이 처리되었습니다!")
@@ -142,20 +138,18 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        # 스크롤 가능한 박스 안에서 이름과 주소(지번/도로명 위아래 2줄 이상) 깔끔하게 출력
+        # 스크롤 가능한 박스 안에서 이름과 여러 줄 주소(지번/도로명) 완벽 출력
         list_container = st.container(height=400)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item['name'] if item['name'] else "(이름 없음)"
                 st.markdown(f"**{i+1}. {name_display}**")
                 
-                if item['address']:
-                    # 주소가 여러 줄(지번, 도로명 등)일 경우 각각 아랫줄에 들여쓰기로 표시
-                    for addr_line in item['address'].split("\n"):
-                        if addr_line.strip():
-                            st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 {addr_line.strip()}")
+                if item['addresses']:
+                    for addr in item['addresses']:
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 {addr}")
                 else:
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 (주소 없음)")
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 (등록된 주소 없음)")
                     
                 st.markdown("---")
 
@@ -180,9 +174,8 @@ with col_right:
             for t in targets:
                 matched_item = None
                 for item in st.session_state.master_addresses:
-                    m_addr = item["address"]
-                    # 주소 전체 또는 각 줄과 대조
-                    if m_addr and any(sub.strip() in t or t in sub.strip() for sub in m_addr.split("\n") if sub.strip()):
+                    # 등록된 주소들 중 하나라도 포함되는지 확인
+                    if item["addresses"] and any(addr in t or t in addr for addr in item["addresses"]):
                         matched_item = item
                         break
                 
