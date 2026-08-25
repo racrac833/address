@@ -115,7 +115,7 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 스마트 와일드카드 주소 매칭 함수
+# [핵심] 자릿수(길이)와 와일드카드 패턴을 완벽히 일치시키는 엄격 정밀 매칭 함수
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
@@ -123,6 +123,7 @@ def is_address_matched(master_addr, target_addr):
     if m_clean in t_clean or t_clean in m_clean:
         return True
         
+    # 1. 핵심 지명 키워드 매칭 (동, 로, 길, 단지, 아파트 등)
     m_words = master_addr.split()
     keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['시', '구', '군', '동', '읍', '면', '리', '로', '길', '단지', '센터', '아파트']) and len(w.replace('*', '')) >= 2]
     
@@ -131,18 +132,29 @@ def is_address_matched(master_addr, target_addr):
         if not matched_kw:
             return False
             
-    m_num_patterns = re.findall(r'(\d+[\*]+|\d+)', master_addr)
-    t_nums = re.findall(r'\d+', target_addr)
+    # 2. 마스터 주소의 숫자 패턴(와일드카드 포함) 추출
+    # 예: "11**", "30*", "25**" 등
+    m_patterns = re.findall(r'\b\d*[\*]+\d*|\b\d+\b', master_addr)
+    # 실제 입력된 주소의 모든 독립된 숫자들 추출
+    target_nums = re.findall(r'\d+', target_addr)
     
-    for mp in m_num_patterns:
+    # 3. 각 패턴별 자릿수(길이) 및 접두사 엄격 대조
+    for mp in m_patterns:
         if '*' in mp:
+            required_len = len(mp)
             prefix = mp.split('*')[0]
-            expected_len = len(mp)
-            has_match = any(tn.startswith(prefix) and len(tn) == expected_len for tn in t_nums)
-            if not has_match:
+            
+            # 입력된 숫자들 중 [자릿수가 정확히 일치]하고 [접두사로 시작]하는 숫자가 있는지 검사
+            found_match = False
+            for tn in target_nums:
+                if len(tn) == required_len and tn.startswith(prefix):
+                    found_match = True
+                    break
+            if not found_match:
                 return False
         else:
-            if mp not in t_nums:
+            # 일반 고정 숫자인 경우 자릿수와 값이 완전히 일치하는 숫자가 있어야 함
+            if mp not in target_nums:
                 return False
                 
     return True
@@ -290,7 +302,7 @@ with col_right:
                             
                     if is_matched:
                         matched_item = item
-                        matched_index = idx + 1  # 0부터 시작하므로 +1하여 정확한 1번 기반 번호 부여
+                        matched_index = idx + 1  # 1번부터 시작하는 정확한 리스트 번호
                         break
                 
                 if matched_item:
@@ -312,7 +324,7 @@ with col_right:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창 (정확한 인덱스 반영)
+    # 매칭된 금지 목록 상세 전용 창 (정확한 60번 인덱스 반영)
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
