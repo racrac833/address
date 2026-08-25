@@ -71,10 +71,12 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# CHECK 버튼과 PASS/STOP 박스 스타일 설정 (STOP 크기와 폰트 두께 동일 적용, 중앙 정렬)
+# 우측 체크리스트 영역의 CHECK 버튼만 노란색 배경과 STOP 크기/두께 적용
 st.markdown("""
     <style>
-    div.stButton > button:first-child {
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
+        background-color: #FFD700 !important;
+        color: #000000 !important;
         font-size: 1.17rem !important;
         font-weight: 700 !important;
         height: 3rem !important;
