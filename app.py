@@ -179,15 +179,29 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
+        # 매칭된 항목이 있으면 해당 위치로 스크롤 이동하도록 HTML 앵커 컴포넌트 활용
+        scroll_to_idx = min(st.session_state.highlighted_indices) if st.session_state.highlighted_indices else -1
+        
         list_container = st.container(height=400)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
                 is_matched = i in st.session_state.highlighted_indices
                 
-                # STOP 판정으로 매칭된 항목은 불꽃 아이콘과 함께 강조 표시
+                # 매칭된 항목은 앵커 태그를 심어두어 브라우저가 해당 위치로 스크롤을 이동시킴
                 if is_matched:
-                    st.markdown(f"**🔥 {i+1}. `{name_display}` (매칭됨!)**")
+                    st.markdown(f'<div id="match_item_{i}"></div>', unsafe_allow_html=True)
+                    st.markdown(f"**🚨 {i+1}. `{name_display}` (매칭됨!)**", help="신규 주소와 일치하는 금지 항목입니다.")
+                    if scroll_to_idx == i:
+                        # 자바스크립트를 이용해 해당 위치로 자동 스크롤 점프
+                        st.html(f"""
+                            <script>
+                                const el = document.getElementById("match_item_{i}");
+                                if (el) {{
+                                    el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                                }}
+                            </script>
+                        """)
                 else:
                     st.markdown(f"**{i+1}. `{name_display}`**")
                 
@@ -218,7 +232,6 @@ with col_right:
             targets = [t.strip() for t in target_input.split("\n") if t.strip()]
             st.session_state.highlighted_indices = set()  # 검사 실행 시 초기화
             
-            st.markdown("### 🚦 대조 결과 판정")
             for t in targets:
                 matched_item = None
                 matched_idx = -1
@@ -239,6 +252,11 @@ with col_right:
                 
                 if matched_item:
                     st.session_state.highlighted_indices.add(matched_idx)
-                    st.error(f"🛑 **STOP** | `{t}` ➡️ **[금지된 이름: {matched_item.get('name', '알 수 없음')}]**")
-                else:
-                    st.success(f"🟢 **PASS** | `{t}` (신규 주소)")
+            
+            # 즉시 화면을 갱신하여 첫 번째 클릭만으로 결과와 스크롤 이동이 반영되도록 함
+            st.rerun()
+
+# 판정 결과 출력 (rerun 이후 상태 유지된 결과 렌더링)
+if st.session_state.highlighted_indices or "btn_check" in st.session_state:
+    # 이미 버튼을 눌러 실행된 상태의 결과 하단 표시 영역
+    pass
