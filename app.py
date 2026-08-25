@@ -51,7 +51,7 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
     {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
@@ -71,11 +71,14 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# 우측 체크리스트 영역의 CHECK 버튼만 노란색 배경과 STOP 크기/두께 적용
+# CSS 스타일 적용 (CHECK 버튼 노란색 강제 고정, PASS/STOP 박스 중앙 정렬)
 st.markdown("""
     <style>
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
+    /* 우측 체크리스트 영역의 첫 번째 버튼(CHECK)만 노란색 배경 강제 지정 */
+    div[data-testid="column"]:nth-of-type(2) button[kind="secondary"],
+    div[data-testid="column"]:nth-of-type(2) button[kind="primary"] {
         background-color: #FFD700 !important;
+        border-color: #FFD700 !important;
         color: #000000 !important;
         font-size: 1.17rem !important;
         font-weight: 700 !important;
@@ -122,33 +125,36 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 자릿수 및 패턴 일치 엄격 매칭 함수
+# 유연하고 정밀한 와일드카드 패턴 매칭 함수
 def is_address_matched(master_addr, target_addr):
-    if master_addr in target_addr or target_addr in master_addr:
+    if master_addr in target_addr or target_addr in target_addr:
         return True
         
     m_words = master_addr.split()
-    road_keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['로', '길', '동', '읍', '면', '리', '가', '센터', '아파트', '오피스텔', '빌딩', '타워']) and len(w.replace('*', '')) >= 2]
+    road_keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['로', '길', '동', '읍', '면', '리', '가', '센터', '아파트', '오피스텔', '빌딩', '타워', '단지']) and len(w.replace('*', '')) >= 2]
     
     if road_keywords:
         matched_road = any(rk in target_addr for rk in road_keywords)
         if not matched_road:
             return False
+            
+    master_tokens = master_addr.split()
+    target_tokens = target_addr.split()
     
-    m_num_patterns = re.findall(r'\d+\**', master_addr)
-    t_nums = re.findall(r'\d+', target_addr)
-    
-    if m_num_patterns and t_nums:
-        for mp in m_num_patterns:
-            if '*' in mp:
-                expected_len = len(mp)
-                prefix = mp.split('*')[0]
-                if prefix:
-                    has_matching_num = any(t_num.startswith(prefix) and len(t_num) == expected_len for t_num in t_nums)
-                    if not has_matching_num:
-                        return False
-                        
-    return True if road_keywords else False
+    for m_token in master_tokens:
+        if '*' in m_token:
+            escaped_token = re.escape(m_token).replace(r'\*', r'\d')
+            pattern = f"^{escaped_token}$"
+            
+            found_match = False
+            for t_token in target_tokens:
+                if re.match(pattern, t_token):
+                    found_match = True
+                    break
+            if not found_match:
+                return False
+                
+    return True if road_keywords or master_tokens else False
 
 # 메인 타이틀
 st.markdown("<h2 style='font-size: 1.9rem;'>BLACK LIST</h2>", unsafe_allow_html=True)
