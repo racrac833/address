@@ -125,7 +125,7 @@ col_left, col_right = st.columns(2, gap="medium")
 with col_left:
     st.markdown("<h4 style='font-size: 1.1rem;'>블랙리스트</h4>", unsafe_allow_html=True)
     
-    with st.expander("📂 메모장(TXT) 다운로드 / 업로드", expanded=False):
+    with st.expander("리스트(TXT) 다운로드 / 업로드", expanded=False):
         txt_content = ""
         for item in st.session_state.master_addresses:
             name = item.get("name", "")
@@ -137,16 +137,16 @@ with col_left:
                 txt_content += f"{name},\n"
                 
         st.download_button(
-            label="💾 다운로드 (.txt)",
+            label="다운로드 (.txt)",
             data=txt_content,
             file_name="forbidden_addresses.txt",
             mime="text/plain",
             use_container_width=True
         )
         
-        uploaded_file = st.file_uploader("수정된 파일 업로드", type=["txt"])
+        uploaded_file = st.file_uploader("수정된 리스트 업로드", type=["txt"])
         if uploaded_file is not None:
-            if st.button("🚀 업로드 파일로 덮어쓰기", use_container_width=True, type="primary"):
+            if st.button("업로드 파일로 덮어쓰기", use_container_width=True, type="primary"):
                 try:
                     file_bytes = uploaded_file.getvalue()
                     file_text = file_bytes.decode("utf-8")
@@ -195,13 +195,13 @@ with col_left:
 
     col_b1, col_b2 = st.columns(2)
     with col_b1:
-        if st.button("🔄 기본 복구", use_container_width=True, key="btn_reset"):
+        if st.button("기본 복구", use_container_width=True, key="btn_reset"):
             st.session_state.master_addresses = initial_data.copy()
             st.session_state.matched_items_list = []
             st.session_state.check_results = []
             st.rerun()
     with col_b2:
-        if st.button("🗑️ 전체 비우기", use_container_width=True, key="btn_clear"):
+        if st.button("전체 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
             st.session_state.matched_items_list = []
             st.session_state.check_results = []
@@ -216,13 +216,11 @@ with col_left:
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
-                # 이름 아래에 주소가 바짝 붙도록 마크다운 마진을 최소화 (margin-bottom: 0px)
                 st.markdown(f"<p style='margin:0px 0px 0px 0px; font-weight:bold;'>{i+1}. <code>{name_display}</code></p>", unsafe_allow_html=True)
                 
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        # 주소와 이름 사이의 상단 간격을 없애고(margin-top: 0px) 바로 붙임
                         st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
@@ -274,21 +272,21 @@ with col_right:
 
     # 판정 결과 출력 영역
     if st.session_state.check_results:
-        st.markdown("**🚦 대조 결과 판정**")
+        st.markdown("**대조 결과 판정**")
         for res_type, t_val, m_name in st.session_state.check_results:
             if res_type == "STOP":
-                st.error(f"🛑 **STOP** | `{t_val}` ➡️ **[금지된 이름: {m_name}]**")
+                st.error(f"**STOP** | `{t_val}` ➡️ **[금지된 이름: {m_name}]**")
             else:
-                st.success(f"🟢 **PASS** | `{t_val}` (신규 주소)")
+                st.success(f"**PASS** | `{t_val}` (신규 주소)")
 
     # 매칭된 금지 목록 상세 전용 창
     if st.session_state.matched_items_list:
-        st.markdown("**🚨 매칭된 금지 목록 상세 정보**")
+        st.markdown("**매칭된 금지 목록 상세 정보**")
         match_container = st.container(height=220)
         with match_container:
             for m_item in st.session_state.matched_items_list:
                 m_name = m_item.get('name', '(이름 없음)')
-                st.markdown(f"**🚨 [매칭됨] `{m_name}`**")
+                st.markdown(f"**[매칭됨] `{m_name}`**")
                 m_addrs = m_item.get('addresses', [])
                 if m_addrs:
                     for addr in m_addrs:
