@@ -127,7 +127,7 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# [완벽 수정] 이름 매칭 함수
+# 이름 매칭 함수
 def is_name_matched(master_name, target_addr):
     sub_names = master_name.split('/')
     for sub in sub_names:
@@ -147,28 +147,21 @@ def is_name_matched(master_name, target_addr):
                 return True
     return False
 
-# [완벽 수정] 정규식 기반 엄격 주소 대조 함수 (와일드카드 및 자릿수 철저 검증)
+# [완벽 개선] 와일드카드(*)를 유연한 패턴(.*)으로 변환하여 별표와 실제 숫자가 섞여 있어도 완벽히 매칭하는 함수
 def is_address_matched(master_addr, target_addr):
-    # 1. 공백 제거 후 완전 일치 또는 포함 확인
     m_clean = re.sub(r'\s+', '', master_addr)
     t_clean = re.sub(r'\s+', '', target_addr)
+    
     if m_clean in t_clean:
         return True
         
-    # 2. 마스터 주소를 정규식 패턴으로 변환
-    # 예: "경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"
-    # -> 정규식에서 '*'를 '\d'로 변환하여 자릿수와 형태를 정확히 일치시킴
+    # 마스터 주소의 '*'를 정규식 와일드카드 '.*'로 변환하여 어떤 문자/숫자든 유연하게 커버
     escaped = re.escape(master_addr)
-    # 정규식 특수문자 이스케이프된 \* 를 \d 로 변경
-    regex_pattern = escaped.replace(r'\*', r'\d')
-    # 공백 처리를 유연하게 하기 위해 공백들을 \s* 로 변경
+    regex_pattern = escaped.replace(r'\*', r'.*')
     regex_pattern = re.sub(r'\\?\s+', r'\\s*', regex_pattern)
     
-    # 앞뒤로 단어 경계나 유연한 매칭을 위해 패턴 적용
-    full_regex = regex_pattern
-    
     try:
-        if re.search(full_regex, target_addr):
+        if re.search(regex_pattern, target_addr):
             return True
     except Exception:
         pass
