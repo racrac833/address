@@ -123,14 +123,12 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# [이름 매칭 완벽 수정] 별표(*) 갯수만큼 정확히 자릿수를 검사 (예: 우지* -> "우지"는 패스, "우지원"은 스탑)
 def is_name_matched(master_name, target_text):
     for sub in master_name.split('/'):
         sub = sub.strip()
         if not sub:
             continue
         if '*' in sub:
-            # 별표 한 개당 반드시 1개의 글자(한글, 영문, 숫자)가 붙어있어야만 매칭되도록 정규식 강제 지정
             escaped = re.escape(sub)
             regex_pattern = escaped.replace(r'\*', r'[가-힣A-Za-z0-9]')
             if re.search(regex_pattern, target_text):
@@ -140,7 +138,6 @@ def is_name_matched(master_name, target_text):
                 return True
     return False
 
-# [주소 매칭 완벽 수정] 520-25 오탐 방지 등 자릿수 및 경계 검증 
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
@@ -148,7 +145,6 @@ def is_address_matched(master_addr, target_addr):
     if m_clean in t_clean:
         return True
 
-    # 1. 숫자가 없는 텍스트 전용 처리 (예: 헤트라스***)
     if not any(ch.isdigit() for ch in master_addr):
         base_text = master_addr.replace('*', '').replace(' ', '')
         return bool(base_text) and base_text in t_clean
@@ -156,33 +152,30 @@ def is_address_matched(master_addr, target_addr):
     m_tokens = master_addr.split()
     
     for m_token in m_tokens:
-        # 2. 사용자가 '11**'처럼 별표를 복사해서 그대로 검색한 경우 예외 통과
         if '*' in m_token and m_token in target_addr:
             continue
             
-        # 3. 토큰에 숫자나 와일드카드가 포함된 경우 -> 정규식 자릿수 정밀 검사
         if any(ch.isdigit() or ch == '*' for ch in m_token):
             chars = []
             for ch in m_token:
                 if ch == '*':
-                    chars.append(r'\d') # 별표를 숫자 1자리로 변환
+                    # 핵심 수정: \d(숫자) -> \S(공백 제외 모든 문자)로 변경
+                    # 이로써 "****타워" (한글), "9**" (숫자) 모두 해당 자릿수만큼 정확하게 매칭 가능
+                    chars.append(r'\S')
                 else:
                     chars.append(re.escape(ch))
             
-            # 글자 사이 띄어쓰기 유연 허용
             flex_pattern = r'\s*'.join(chars)
             
-            # [핵심] 패턴이 숫자로 시작/끝나면 바로 앞/뒤에 또 다른 숫자가 붙어있을 수 없게 차단
+            # 앞뒤 다른 글자가 붙어서 자릿수가 늘어나는 오탐을 방지하는 경계선 처리
             if m_token[0].isdigit() or m_token[0] == '*':
-                flex_pattern = r'(?<!\d)' + flex_pattern
+                flex_pattern = r'(?<!\S)' + flex_pattern
             if m_token[-1].isdigit() or m_token[-1] == '*':
-                flex_pattern = flex_pattern + r'(?!\d)'
+                flex_pattern = flex_pattern + r'(?!\S)'
                 
-            # target_addr 자체에서 유연하게 검색
             if not re.search(flex_pattern, target_addr):
                 return False
         else:
-            # 4. 순수 텍스트 토큰 검사
             m_token_clean = m_token.replace(" ", "")
             if m_token_clean not in t_clean:
                 return False
