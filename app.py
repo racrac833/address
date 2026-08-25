@@ -51,7 +51,7 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
     {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
@@ -60,7 +60,7 @@ initial_data = [
     {"name": "이해*", "addresses": ["대구 방촌동822-* 해** 행정**센터"]},
     {"name": "이현*", "addresses": ["서울특별시 서초구 서초대로77길 ** 8층 엘리베이터 앞", "인천광역시 서구 서곶로 120 2*8동 7*2호"]},
     {"name": "장승*", "addresses": ["경기도 의정부시 민락동 92*-* 의정부 더** 센텀스퀘어* 지식산업센터 3동 2**호"]},
-    {"name": "장현*/장호*", "addresses": ["서울특별시 강남구 역섬동 673-** 베**캠프 센터필드점"]},
+    {"name": "장현*/장호*", "addresses": ["서울특별시 강남구 역삼동 673-** 베**캠프 센터필드점"]},
     {"name": "정슬*", "addresses": ["강동구 양재대로98길 43-4* 2**호"]},
     {"name": "정용*", "addresses": ["울산광역시 북구 양정동 52*-* 1층"]},
     {"name": "정진*", "addresses": ["서울특별시 강서구 등촌동 6*8-5 아임20*0 등촌역 6*7호", "서울특별시 강서구 공항대로5*가길 14 6*7호"]},
@@ -89,13 +89,11 @@ if "matched_items_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 정밀 자릿수 및 와일드카드 패턴 매칭 함수
+# 자릿수 및 패턴 일치 엄격 매칭 함수
 def is_address_matched(master_addr, target_addr):
-    # 1. 완전히 똑같은 주소인 경우
     if master_addr in target_addr or target_addr in master_addr:
         return True
         
-    # 2. 도로명/건물명 키워드 검증
     m_words = master_addr.split()
     road_keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['로', '길', '동', '읍', '면', '리', '가', '센터', '아파트', '오피스텔', '빌딩', '타워']) and len(w.replace('*', '')) >= 2]
     
@@ -104,27 +102,20 @@ def is_address_matched(master_addr, target_addr):
         if not matched_road:
             return False
     
-    # 3. 와일드카드(*)가 포함된 마스터 주소의 토큰들을 정규식 패턴으로 변환하여 검증
-    master_tokens = master_addr.split()
-    target_tokens = target_addr.split()
+    m_num_patterns = re.findall(r'\d+\**', master_addr)
+    t_nums = re.findall(r'\d+', target_addr)
     
-    # 각 마스터 토큰 중 숫자가 포함된 패턴 검증
-    for m_token in master_tokens:
-        if '*' in m_token:
-            # 예: "2*4호" -> 정규식 패턴 "^2\d4호$" 로 변환 (별표를 정확히 1자리 숫자 \d 로 치환)
-            escaped_token = re.escape(m_token).replace(r'\*', r'\d')
-            pattern = f"^{escaped_token}$"
-            
-            # 입력된 주소의 토큰 중에 이 패턴과 정확히 일치하는 것이 있는지 확인
-            found_match = False
-            for t_token in target_tokens:
-                if re.match(pattern, t_token):
-                    found_match = True
-                    break
-            if not found_match:
-                return False  # 패턴(자릿수 및 특정 숫자 조합)이 일치하지 않으면 매칭 실패(PASS)
-                
-    return True if road_keywords or master_tokens else False
+    if m_num_patterns and t_nums:
+        for mp in m_num_patterns:
+            if '*' in mp:
+                expected_len = len(mp)
+                prefix = mp.split('*')[0]
+                if prefix:
+                    has_matching_num = any(t_num.startswith(prefix) and len(t_num) == expected_len for t_num in t_nums)
+                    if not has_matching_num:
+                        return False
+                        
+    return True if road_keywords else False
 
 st.title("🔍 주소 대조 및 스마트 관리 프로그램")
 st.markdown("이름과 기준 주소를 관리하고 신규 주소와 대조하는 프로그램입니다.")
@@ -136,38 +127,84 @@ col_left, col_right = st.columns(2, gap="large")
 with col_left:
     st.subheader("📁 기준 금지 주소 관리 (좌측)")
     
-    with st.expander("📥 구글 시트 대량 한 번에 등록하기 (클릭해서 열기)", expanded=False):
-        st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요.")
-        bulk_input = st.text_area("대량 데이터 입력", placeholder="이름, 주소 형식으로 입력", height=100, key="input_bulk")
+    # 📥 텍스트 파일(메모장) 다운로드 및 업로드 기능 영역
+    with st.expander("📂 메모장(TXT) 파일로 다운로드 및 일괄 수정 (클릭해서 열기)", expanded=False):
+        st.markdown("현재 등록된 금지 목록을 메모장 파일로 다운로드하거나, 수정된 파일을 업로드하여 일괄 반영할 수 있습니다.")
         
-        if st.button("🚀 대량 데이터 일괄 등록", use_container_width=True, key="btn_bulk_add"):
-            if bulk_input.strip():
-                lines = bulk_input.strip().split("\n")
-                count = 0
-                for line in lines:
-                    line_str = line.strip()
-                    if not line_str:
-                        continue
-                    
-                    if "," in line_str:
-                        parts = line_str.split(",", 1)
-                        name_val = parts[0].strip()
-                        addr_val = parts[1].strip()
-                        item = {"name": name_val, "addresses": [addr_val] if addr_val else []}
-                        st.session_state.master_addresses.append(item)
-                        count += 1
-                    else:
-                        if st.session_state.master_addresses and any(k in line_str for k in ["시", "구", "군", "동", "읍", "면", "리", "로", "길", "대로", "번지", "APT", "아파트", "층", "호"]):
-                            prev_item = st.session_state.master_addresses[-1]
-                            prev_item["addresses"].append(line_str)
-                        else:
-                            item = {"name": line_str, "addresses": []}
-                            st.session_state.master_addresses.append(item)
-                            count += 1
-                st.success(f"총 {count}건이 처리되었습니다!")
-                st.rerun()
+        # 현재 리스트를 텍스트 형식으로 변환 (이름, 주소 형태)
+        txt_content = ""
+        for item in st.session_state.master_addresses:
+            name = item.get("name", "")
+            addrs = item.get("addresses", [])
+            if addrs:
+                for addr in addrs:
+                    txt_content += f"{name},{addr}\n"
             else:
-                st.warning("내용을 입력해주세요.")
+                txt_content += f"{name},\n"
+                
+        # 다운로드 버튼
+        st.download_button(
+            label="💾 금지 목록 메모장 다운로드 (.txt)",
+            data=txt_content,
+            file_name="forbidden_addresses.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+        
+        st.markdown("---")
+        
+        # 업로드 영역
+        uploaded_file = st.file_uploader("수정된 메모장 파일(.txt) 업로드", type=["txt"])
+        if uploaded_file is not None:
+            if st.button("🚀 업로드한 파일로 목록 일괄 덮어쓰기", use_container_width=True, type="primary"):
+                try:
+                    file_bytes = uploaded_file.getvalue()
+                    file_text = file_bytes.decode("utf-8")
+                    lines = file_text.splitlines()
+                    
+                    new_master_data = []
+                    current_name = None
+                    current_addrs = []
+                    
+                    for line in lines:
+                        line_str = line.strip()
+                        if not line_str:
+                            continue
+                            
+                        if "," in line_str:
+                            parts = line_str.split(",", 1)
+                            name_val = parts[0].strip()
+                            addr_val = parts[1].strip()
+                            
+                            # 같은 이름이 연속되거나 신규 이름일 경우 처리
+                            if current_name and current_name != name_val:
+                                new_master_data.append({"name": current_name, "addresses": current_addrs})
+                                current_name = name_val
+                                current_addrs = [addr_val] if addr_val else []
+                            else:
+                                current_name = name_val
+                                if addr_val:
+                                    current_addrs.append(addr_val)
+                        else:
+                            if current_name:
+                                current_addrs.append(line_str)
+                            else:
+                                current_name = line_str
+                                current_addrs = []
+                                
+                    if current_name:
+                        new_master_data.append({"name": current_name, "addresses": current_addrs})
+                        
+                    if new_master_data:
+                        st.session_state.master_addresses = new_master_data
+                        st.session_state.matched_items_list = []
+                        st.session_state.check_results = []
+                        st.success(f"총 {len(new_master_data)}건의 금지 목록이 성공적으로 일괄 반영되었습니다!")
+                        st.rerun()
+                    else:
+                        st.warning("파일에서 올바른 데이터를 읽지 못했습니다.")
+                except Exception as e:
+                    st.error(f"파일 처리 중 오류가 발생했습니다: {e}")
 
     st.markdown("---")
     
