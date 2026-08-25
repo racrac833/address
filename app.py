@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 기본 금지 리스트 데이터 자동 세팅
+# 기본 금지 리스트 데이터 자동 세팅 (지번/도로명 여러 줄 구조 지원)
 initial_data = [
     {"name": "강민*", "address": "경기 의정부시 배꽃길 63 지식산업센터"},
     {"name": "강아*", "address": "경상북도 칠곡군 왜관읍 금산로3길"},
@@ -85,7 +85,7 @@ with col_left:
     
     # 대량 등록 영역
     with st.expander("📥 구글 시트 대량 한 번에 등록하기 (클릭해서 열기)", expanded=False):
-        st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요. (형식: `이름, 주소`)")
+        st.markdown("구글 시트의 내용을 복사해서 아래에 붙여넣으세요. (이름만 있거나, 주소가 여러 줄이어도 자동 인식됩니다.)")
         bulk_input = st.text_area("대량 데이터 입력", placeholder="이름, 주소 형식으로 입력", height=100, key="input_bulk")
         
         if st.button("🚀 대량 데이터 일괄 등록", use_container_width=True, key="btn_bulk_add"):
@@ -93,15 +93,31 @@ with col_left:
                 lines = bulk_input.strip().split("\n")
                 count = 0
                 for line in lines:
-                    parts = line.split(",", 1)
-                    if len(parts) == 2:
+                    line_str = line.strip()
+                    if not line_str:
+                        continue
+                    
+                    if "," in line_str:
+                        parts = line_str.split(",", 1)
                         name_val = parts[0].strip()
                         addr_val = parts[1].strip()
                         item = {"name": name_val, "address": addr_val}
-                        if item not in st.session_state.master_addresses:
+                        st.session_state.master_addresses.append(item)
+                        count += 1
+                    else:
+                        # 콤마가 없고 주소 형태인 경우 이전 항목의 추가 주소(도로명 등)로 결합, 아니면 이름만 있는 항목으로 추가
+                        if st.session_state.master_addresses and any(k in line_str for k in ["시", "구", "군", "동", "읍", "면", "리", "로", "길", "대로", "번지", "APT", "아파트"]):
+                            prev_item = st.session_state.master_addresses[-1]
+                            if prev_item["address"]:
+                                prev_item["address"] += "\n" + line_str
+                            else:
+                                prev_item["address"] = line_str
+                        else:
+                            # 이름만 있는 경우 삭제하지 않고 그대로 등록
+                            item = {"name": line_str, "address": ""}
                             st.session_state.master_addresses.append(item)
                             count += 1
-                st.success(f"총 {count}건이 등록되었습니다!")
+                st.success(f"총 {count}건이 처리되었습니다!")
                 st.rerun()
             else:
                 st.warning("내용을 입력해주세요.")
@@ -126,11 +142,21 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        # 스크롤 가능한 박스 안에서 이름과 주소를 2줄 간격으로 깔끔하게 출력
+        # 스크롤 가능한 박스 안에서 이름과 주소(지번/도로명 위아래 2줄 이상) 깔끔하게 출력
         list_container = st.container(height=400)
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
-                st.markdown(f"**{i+1}. {item['name']}**\n\n&nbsp;&nbsp;&nbsp;&nbsp;📍 {item['address']}")
+                name_display = item['name'] if item['name'] else "(이름 없음)"
+                st.markdown(f"**{i+1}. {name_display}**")
+                
+                if item['address']:
+                    # 주소가 여러 줄(지번, 도로명 등)일 경우 각각 아랫줄에 들여쓰기로 표시
+                    for addr_line in item['address'].split("\n"):
+                        if addr_line.strip():
+                            st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 {addr_line.strip()}")
+                else:
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 (주소 없음)")
+                    
                 st.markdown("---")
 
 with col_right:
@@ -155,7 +181,8 @@ with col_right:
                 matched_item = None
                 for item in st.session_state.master_addresses:
                     m_addr = item["address"]
-                    if m_addr in t or t in m_addr:
+                    # 주소 전체 또는 각 줄과 대조
+                    if m_addr and any(sub.strip() in t or t in sub.strip() for sub in m_addr.split("\n") if sub.strip()):
                         matched_item = item
                         break
                 
