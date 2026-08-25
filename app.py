@@ -71,20 +71,9 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# CSS 스타일 정의 (CHECK 버튼 노란색 배경 및 STOP/PASS 박스 크기·두께 완벽 일치)
+# CSS 스타일 정의
 st.markdown("""
     <style>
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
-        background-color: #FFD700 !important;
-        color: #000000 !important;
-        padding: 0.5rem 1rem !important;
-        border-radius: 0.3rem !important;
-        font-weight: 700 !important;
-        font-size: 1.17rem !important;
-        height: auto !important;
-        width: 100% !important;
-        border: none !important;
-    }
     .pass-box {
         background-color: #1E90FF;
         color: white;
@@ -134,7 +123,6 @@ def is_address_matched(master_addr, target_addr):
     if m_clean in t_clean or t_clean in m_clean:
         return True
         
-    # 1. 핵심 지명 키워드 매칭 (동, 로, 길, 단지, 아파트, 시, 구 등)
     m_words = master_addr.split()
     keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['시', '구', '군', '동', '읍', '면', '리', '로', '길', '단지', '센터', '아파트']) and len(w.replace('*', '')) >= 2]
     
@@ -143,21 +131,17 @@ def is_address_matched(master_addr, target_addr):
         if not matched_kw:
             return False
             
-    # 2. 마스터 주소의 숫자/와일드카드 패턴 추출
     m_num_patterns = re.findall(r'(\d+[\*]+|\d+)', master_addr)
     t_nums = re.findall(r'\d+', target_addr)
     
-    # 3. 각 패턴 검증
     for mp in m_num_patterns:
         if '*' in mp:
             prefix = mp.split('*')[0]
             expected_len = len(mp)
-            # 접두사가 일치하고 전체 자릿수가 같은 숫자가 하나라도 있으면 매칭 성공
             has_match = any(tn.startswith(prefix) and len(tn) == expected_len for tn in t_nums)
             if not has_match:
                 return False
         else:
-            # 고정 숫자인 경우 입력 주소에 해당 숫자가 있어야 함
             if mp not in t_nums:
                 return False
                 
@@ -306,7 +290,7 @@ with col_right:
                             
                     if is_matched:
                         matched_item = item
-                        matched_index = idx + 1
+                        matched_index = idx + 1  # 0부터 시작하므로 +1하여 정확한 1번 기반 번호 부여
                         break
                 
                 if matched_item:
@@ -328,7 +312,7 @@ with col_right:
                 st.markdown('<div class="pass-box">PASS</div>', unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top: 0px; margin-bottom: 10px; font-weight: normal;'>{t_val}</p>", unsafe_allow_html=True)
 
-    # 매칭된 금지 목록 상세 전용 창
+    # 매칭된 금지 목록 상세 전용 창 (정확한 인덱스 반영)
     if st.session_state.matched_details_list:
         match_container = st.container(height=220)
         with match_container:
