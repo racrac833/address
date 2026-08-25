@@ -69,12 +69,9 @@ initial_data = [
     {"name": "정인*", "address": "경기도 하남시 망월동"}
 ]
 
-# 세션 상태 초기화 (최초 실행 시 기본 데이터 자동 장착)
+# 세션 상태 초기화
 if "master_addresses" not in st.session_state or not st.session_state.master_addresses:
     st.session_state.master_addresses = initial_data.copy()
-
-if "selected_item_info" not in st.session_state:
-    st.session_state.selected_item_info = None
 
 st.title("🔍 주소 대조 및 스마트 관리 프로그램")
 st.markdown("이름과 기준 주소를 관리하고 신규 주소와 대조하는 프로그램입니다.")
@@ -116,37 +113,24 @@ with col_left:
     with col_b1:
         if st.button("🔄 기본 데이터로 복구", use_container_width=True, key="btn_reset"):
             st.session_state.master_addresses = initial_data.copy()
-            st.session_state.selected_item_info = None
             st.success("기본 데이터가 로드되었습니다!")
             st.rerun()
     with col_b2:
         if st.button("🗑️ 전체 리스트 비우기", use_container_width=True, key="btn_clear"):
             st.session_state.master_addresses = []
-            st.session_state.selected_item_info = None
             st.rerun()
-
-    if st.session_state.selected_item_info:
-        st.info(f"🔎 **[선택한 항목 상세 정보]**\n\n- **이름:** {st.session_state.selected_item_info['name']}\n\n- **주소:** {st.session_state.selected_item_info['address']}")
 
     st.markdown("---")
     st.markdown(f"### 📋 현재 등록된 금지 목록 ({len(st.session_state.master_addresses)}건)")
+    
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        for i, item in enumerate(st.session_state.master_addresses):
-            c1, c2, c3 = st.columns([0.7, 0.15, 0.15])
-            with c1:
-                st.markdown(f"**{i+1}.** {item['name']}")
-            with c2:
-                if st.button("🔍", key=f"view_idx_{i}"):
-                    st.session_state.selected_item_info = item
-                    st.rerun()
-            with c3:
-                if st.button("❌", key=f"del_idx_{i}"):
-                    if st.session_state.selected_item_info == item:
-                        st.session_state.selected_item_info = None
-                    st.session_state.master_addresses.pop(i)
-                    st.rerun()
+        # 스크롤 가능한 박스 안에 이름과 주소를 한 줄씩 깔끔하게 출력
+        list_container = st.container(height=400)
+        with list_container:
+            for i, item in enumerate(st.session_state.master_addresses):
+                st.markdown(f"**{i+1}. [{item['name']}]** {item['address']}")
 
 with col_right:
     st.subheader("⚡ 신규 주소 대조 검사 (우측)")
