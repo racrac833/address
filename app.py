@@ -51,9 +51,9 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
-    {"name": "이원*/*은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
+    {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
     {"name": "이주*/루*", "addresses": ["경기도 하남시 미사강변동로 1*7 경**원"]},
     {"name": "이창*", "addresses": ["인천광역시 서해구 가*동 70* 루원시티 S* Leaders VI*W 오피스텔 1차 2*1동 18*6호"]},
@@ -71,7 +71,7 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# CSS 스타일 정의 (오류 수정 완료)
+# CSS 스타일 정의
 st.markdown("""
     <style>
     .custom-check-btn {
@@ -128,12 +128,11 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 강력하고 유연한 주소 매칭 함수 (와일드카드 및 번호 범위 정밀 비교)
+# 순수 숫자와 와일드카드(*)만 추출하여 정확한 자릿수를 비교하는 정밀 매칭 함수
 def is_address_matched(master_addr, target_addr):
     if master_addr in target_addr or target_addr in master_addr:
         return True
         
-    # 핵심 지명 키워드 추출 (동, 로, 길, 단지 등)
     m_words = master_addr.split()
     road_keywords = [w.replace('*', '') for w in m_words if any(w.endswith(s) for s in ['로', '길', '동', '읍', '면', '리', '가', '센터', '아파트', '오피스텔', '빌딩', '타워', '단지']) and len(w.replace('*', '')) >= 2]
     
@@ -143,22 +142,20 @@ def is_address_matched(master_addr, target_addr):
             return False
             
     master_tokens = master_addr.split()
-    target_tokens = target_addr.split()
     target_nums = re.findall(r'\d+', target_addr)
     
-    # 마스터 주소의 각 토큰 검증
     for m_token in master_tokens:
         if '*' in m_token:
-            # 별표가 포함된 패턴 (예: 11**, 30*, 25**)
-            prefix = m_token.split('*')[0]
-            length = len(m_token)
-            
-            # 입력된 주소의 숫자들 중 접두사와 자릿수가 일치하는 숫자가 있는지 확인
-            found_num_match = any(t.startswith(prefix) and len(t) == length for t in target_nums)
-            if not found_num_match:
-                return False
+            # 동, 호 등의 문자를 제외하고 숫자와 '*' 기호만 추출
+            num_pattern_part = "".join([ch for ch in m_token if ch.isdigit() or ch == '*'])
+            if num_pattern_part:
+                prefix = num_pattern_part.split('*')[0]
+                length = len(num_pattern_part)
+                
+                found_num_match = any(t.startswith(prefix) and len(t) == length for t in target_nums)
+                if not found_num_match:
+                    return False
         else:
-            # 일반 숫자가 포함된 경우 정확히 일치하는지 확인
             m_nums = re.findall(r'\d+', m_token)
             if m_nums:
                 for mn in m_nums:
