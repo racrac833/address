@@ -127,12 +127,32 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# [버그 수정 완료] 정상적인 주소 매칭 함수
+# [신규 추가] 이름 패턴 매칭 함수 (예: "정인*" -> "정인상", "정인수" 등 감지)
+def is_name_matched(master_name, target_addr):
+    sub_names = master_name.split('/')
+    for sub in sub_names:
+        sub = sub.strip()
+        if '*' in sub:
+            prefix = sub.split('*')[0]
+            if not prefix:
+                continue
+            # 입력된 텍스트 안에 해당 접두사로 시작하는 이름/단어가 있는지 검사
+            t_words = re.findall(r'[가-힣A-Za-z0-9*]+', target_addr)
+            for tw in t_words:
+                if tw.startswith(prefix):
+                    return True
+            if prefix in target_addr:
+                return True
+        else:
+            if sub and sub in target_addr:
+                return True
+    return False
+
+# [정밀 주소 매칭 함수]
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
     
-    # 오타 수정됨: t_clean in t_clean 제거 및 정확한 포함 관계 검증
     if m_clean in t_clean or t_clean in m_clean:
         return True
         
@@ -299,13 +319,19 @@ with col_right:
                 matched_index = -1
                 
                 for idx, item in enumerate(st.session_state.master_addresses):
+                    item_name = item.get('name', '')
                     item_addrs = item.get('addresses', [])
                     is_matched = False
                     
-                    for addr in item_addrs:
-                        if is_address_matched(addr, t):
-                            is_matched = True
-                            break
+                    # 1. 이름 매칭 확인 (예: "정인*" 과 "정인상" 대조)
+                    if is_name_matched(item_name, t):
+                        is_matched = True
+                    else:
+                        # 2. 주소 매칭 확인
+                        for addr in item_addrs:
+                            if is_address_matched(addr, t):
+                                is_matched = True
+                                break
                             
                     if is_matched:
                         matched_item = item
