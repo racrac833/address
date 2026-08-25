@@ -50,7 +50,7 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
     {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
@@ -155,9 +155,10 @@ with col_left:
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 {addr}")
+                        # st.text를 사용하여 특수문자나 별(*) 기호가 마크다운에 의해 숨겨지지 않고 원본 그대로 출력되도록 함
+                        st.text(f"    📍 {addr}")
                 else:
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 (등록된 주소 없음)")
+                    st.text(f"    📍 (등록된 주소 없음)")
                     
                 st.markdown("---")
 
