@@ -71,7 +71,7 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# CSS 스타일 정의 (CHECK 버튼, STOP, PASS 박스 디자인 완벽 통일)
+# CSS 스타일 정의
 st.markdown("""
     <style>
     div[data-testid="column"]:nth-of-type(2) div.stButton > button {
@@ -85,16 +85,6 @@ st.markdown("""
         width: 100% !important;
         border: none !important;
         text-align: center !important;
-    }
-    .check-box {
-        background-color: #FFD700;
-        color: #000000;
-        padding: 0.5rem 1rem;
-        border-radius: 0.3rem;
-        font-weight: 700;
-        font-size: 1.17rem;
-        text-align: center;
-        margin-bottom: 0.5rem;
     }
     .pass-box {
         background-color: #1E90FF;
@@ -137,18 +127,18 @@ if "matched_details_list" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# [최종 정밀 매칭 함수] 자릿수와 패턴을 엄격하게 일치시키는 로직
+# [버그 수정 완료] 정상적인 주소 매칭 함수
 def is_address_matched(master_addr, target_addr):
     m_clean = master_addr.replace(" ", "")
     t_clean = target_addr.replace(" ", "")
     
-    if m_clean in t_clean or t_clean in t_clean:
+    # 오타 수정됨: t_clean in t_clean 제거 및 정확한 포함 관계 검증
+    if m_clean in t_clean or t_clean in m_clean:
         return True
         
     master_tokens = master_addr.split()
     target_nums = re.findall(r'\d+', target_addr)
     
-    # 숫자가 포함된 토큰만 추출 (순수 텍스트 항목 오류 원천 차단)
     master_patterns = [w for w in master_tokens if any(ch.isdigit() for ch in w)]
     
     if not master_patterns:
@@ -157,7 +147,6 @@ def is_address_matched(master_addr, target_addr):
 
     for mp in master_patterns:
         if '*' in mp:
-            # 와일드카드가 포함된 경우 자릿수(길이)와 접두사가 엄격히 일치해야 함
             pat_core = "".join([ch for ch in mp if ch.isdigit() or ch == '*'])
             prefix = pat_core.split('*')[0]
             required_len = len(pat_core)
@@ -170,7 +159,6 @@ def is_address_matched(master_addr, target_addr):
             if not found_match:
                 return False
         else:
-            # 고정 숫자인 경우 입력 주소의 숫자 목록에 정확히 포함되어야 함
             m_nums = re.findall(r'\d+', mp)
             for mn in m_nums:
                 if mn not in target_nums:
