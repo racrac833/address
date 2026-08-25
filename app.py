@@ -51,7 +51,7 @@ initial_data = [
     {"name": "이가*", "addresses": ["경기도 화성시 우정읍 조암서로13번길 ** **아파트 10*동 8**호"]},
     {"name": "이광*", "addresses": ["충청남도 공주시 신풍면 봉갑리 3** 타**장"]},
     {"name": "이미*", "addresses": ["경기도 파주시 다율동 10** 푸**오 파**나 140*동 11**호"]},
-    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마울한진8단지아파트 80*동 14**호"]},
+    {"name": "이승*", "addresses": ["경기도 성남시 분당구 정자동 193 정든마을한진8단지아파트 80*동 14**호"]},
     {"name": "이영*", "addresses": ["서울특별시 구로구 신로림동 64* 신도림1차동*아파트 110동 180*호"]},
     {"name": "이원*/이은*", "addresses": ["서울특별시 영등포구 디지털로70길 1*-3 101호"]},
     {"name": "이유*", "addresses": ["광주광역시 서구 풍암동 11** 10*동 14**호"]},
@@ -71,19 +71,21 @@ initial_data = [
     {"name": "정인*", "addresses": ["경기도 하남시 망월동 11** 미사강변도시씨3단지 30*동 25**호"]}
 ]
 
-# CSS 스타일 적용 (CHECK 버튼 노란색 강제 고정, PASS/STOP 박스 중앙 정렬)
+# 스타일 및 커스텀 노란색 CHECK 버튼 스타일 정의
 st.markdown("""
     <style>
-    /* 우측 체크리스트 영역의 첫 번째 버튼(CHECK)만 노란색 배경 강제 지정 */
-    div[data-testid="column"]:nth-of-type(2) button[kind="secondary"],
-    div[data-testid="column"]:nth-of-type(2) button[kind="primary"] {
+    .custom-check-btn {
         background-color: #FFD700 !important;
-        border-color: #FFD700 !important;
         color: #000000 !important;
-        font-size: 1.17rem !important;
-        font-weight: 700 !important;
-        height: 3rem !important;
-    }
+        padding: 0.5rem 1rem;
+        border-radius: 0.3rem;
+        font-weight: 700;
+        font-size: 1.17rem;
+        text-align: center;
+        width: 100%;
+        border: none;
+        cursor: pointer;
+        display: block;
     .pass-box {
         background-color: #1E90FF;
         color: white;
@@ -127,7 +129,7 @@ if "check_results" not in st.session_state:
 
 # 유연하고 정밀한 와일드카드 패턴 매칭 함수
 def is_address_matched(master_addr, target_addr):
-    if master_addr in target_addr or target_addr in target_addr:
+    if master_addr in target_addr or target_addr in master_addr:
         return True
         
     m_words = master_addr.split()
@@ -269,14 +271,17 @@ with col_left:
 with col_right:
     st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트</h4>", unsafe_allow_html=True)
     
-    target_input = st.text_area(
-        "대조할 주소 입력 (줄바꿈으로 여러 개 가능)",
-        placeholder="서울특별시 성동구 성수일로 10\n강남구 테헤란로 123",
-        key="target_textarea",
-        height=180
-    )
-    
-    if st.button("CHECK", use_container_width=True, key="btn_check"):
+    with st.form("check_form"):
+        target_input = st.text_area(
+            "대조할 주소 입력 (줄바꿈으로 여러 개 가능)",
+            placeholder="서울특별시 성동구 성수일로 10\n강남구 테헤란로 123",
+            key="target_textarea",
+            height=180
+        )
+        
+        submitted = st.form_submit_button("CHECK", use_container_width=True)
+
+    if submitted:
         if not target_input.strip():
             st.warning("대조할 주소를 입력해주세요.")
         else:
