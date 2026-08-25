@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import re
 
 st.set_page_config(
@@ -90,7 +89,7 @@ if "highlighted_indices" not in st.session_state:
 if "check_results" not in st.session_state:
     st.session_state.check_results = []
 
-# 스마트 번호 비교 매칭 함수
+# 자릿수 및 패턴 일치 엄격 매칭 함수
 def is_address_matched(master_addr, target_addr):
     if master_addr in target_addr or target_addr in master_addr:
         return True
@@ -103,15 +102,18 @@ def is_address_matched(master_addr, target_addr):
         if not matched_road:
             return False
     
+    # 마스터 주소의 별표 포함된 번호 패턴 분석 (예: 7**)
     m_num_patterns = re.findall(r'\d+\**', master_addr)
     t_nums = re.findall(r'\d+', target_addr)
     
     if m_num_patterns and t_nums:
         for mp in m_num_patterns:
             if '*' in mp:
-                prefix = mp.split('*')[0]
+                expected_len = len(mp)  # 전체 글자수 (예: 7** 이면 3자리)
+                prefix = mp.split('*')[0]  # 시작 숫자 (예: 7)
                 if prefix:
-                    has_matching_num = any(t_num.startswith(prefix) for t_num in t_nums)
+                    # 입력된 번호 중 '시작 숫자로 시작하고', '마스터 패턴과 자릿수가 정확히 일치하는 번호'가 있는지 검증
+                    has_matching_num = any(t_num.startswith(prefix) and len(t_num) == expected_len for t_num in t_nums)
                     if not has_matching_num:
                         return False
                         
@@ -185,20 +187,21 @@ with col_left:
     if not st.session_state.master_addresses:
         st.info("등록된 기준 주소가 없습니다.")
     else:
-        scroll_to_idx = min(st.session_state.highlighted_indices) if st.session_state.highlighted_indices else -1
+        # 매칭된 항목이 맨 위로 오도록 리스트 정렬
+        matched_list = [item for i, item in enumerate(st.session_state.master_addresses) if i in st.session_state.highlighted_indices]
+        other_list = [item for i, item in enumerate(st.session_state.master_addresses) if i not in st.session_state.highlighted_indices]
+        display_items = matched_list + other_list
         
         list_container = st.container(height=400)
         with list_container:
-            for i, item in enumerate(st.session_state.master_addresses):
+            for item in display_items:
                 name_display = item.get('name', '(이름 없음)')
-                is_matched = i in st.session_state.highlighted_indices
+                is_matched = any(item == m_item for m_item in matched_list)
                 
-                # 매칭된 항목 강조 표시 및 HTML ID 부여
                 if is_matched:
-                    st.markdown(f'<div id="match_item_{i}"></div>', unsafe_allow_html=True)
-                    st.markdown(f"**🚨 {i+1}. `{name_display}` (매칭됨!)**")
+                    st.markdown(f"**🚨 [매칭됨] {name_display}**")
                 else:
-                    st.markdown(f"**{i+1}. `{name_display}`**")
+                    st.markdown(f"**{name_display}**")
                 
                 addrs = item.get('addresses', [])
                 if addrs:
@@ -208,18 +211,6 @@ with col_left:
                     st.text(f"    📍 (등록된 주소 없음)")
                     
                 st.markdown("---")
-                
-        # 자바스크립트를 이용해 매칭된 위치로 부드럽게 자동 스크롤 이동
-        if scroll_to_idx != -1:
-            components.html(f"""
-                <script>
-                    const doc = window.parent.document;
-                    const el = doc.getElementById("match_item_{scroll_to_idx}");
-                    if (el) {{
-                        el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                    }}
-                </script>
-            """, height=0)
 
 with col_right:
     st.subheader("⚡ 신규 주소 대조 검사 (우측)")
