@@ -117,13 +117,12 @@ def is_address_matched(master_addr, target_addr):
                         
     return True if road_keywords else False
 
-# 메인 타이틀 (폰트 크기 30% 축소 적용 및 BLACK LIST로 변경)
+# 메인 타이틀
 st.markdown("<h2 style='font-size: 1.9rem;'>BLACK LIST</h2>", unsafe_allow_html=True)
 
 col_left, col_right = st.columns(2, gap="medium")
 
 with col_left:
-    # 서브헤더 폰트 크기 20% 축소 적용 및 '블랙리스트'로 변경
     st.markdown("<h4 style='font-size: 1.1rem;'>블랙리스트</h4>", unsafe_allow_html=True)
     
     with st.expander("📂 메모장(TXT) 다운로드 / 업로드", expanded=False):
@@ -208,7 +207,6 @@ with col_left:
             st.session_state.check_results = []
             st.rerun()
 
-    # '블랙리스트 목록'으로 변경
     st.markdown(f"**블랙리스트 목록 ({len(st.session_state.master_addresses)}건)**")
     
     if not st.session_state.master_addresses:
@@ -218,12 +216,13 @@ with col_left:
         with list_container:
             for i, item in enumerate(st.session_state.master_addresses):
                 name_display = item.get('name', '(이름 없음)')
-                st.markdown(f"**{i+1}. `{name_display}`**")
+                # 이름 아래에 주소가 바짝 붙도록 마크다운 마진을 최소화 (margin-bottom: 0px)
+                st.markdown(f"<p style='margin:0px 0px 0px 0px; font-weight:bold;'>{i+1}. <code>{name_display}</code></p>", unsafe_allow_html=True)
                 
                 addrs = item.get('addresses', [])
                 if addrs:
                     for addr in addrs:
-                        # 주소 글씨 색상을 밝은 흰색(#FFFFFF)으로 강제 지정
+                        # 주소와 이름 사이의 상단 간격을 없애고(margin-top: 0px) 바로 붙임
                         st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
@@ -231,7 +230,6 @@ with col_left:
                 st.markdown("<hr style='margin:4px 0px; border:0; border-top:1px solid #444;'>", unsafe_allow_html=True)
 
 with col_right:
-    # 서브헤더 폰트 크기 20% 축소 적용 및 '체크리스트'로 변경
     st.markdown("<h4 style='font-size: 1.1rem;'>체크리스트</h4>", unsafe_allow_html=True)
     
     target_input = st.text_area(
@@ -241,7 +239,6 @@ with col_right:
         height=180
     )
     
-    # 버튼 문구를 'CHECK'로 변경
     if st.button("CHECK", type="primary", use_container_width=True, key="btn_check"):
         if not target_input.strip():
             st.warning("대조할 주소를 입력해주세요.")
@@ -295,7 +292,6 @@ with col_right:
                 m_addrs = m_item.get('addresses', [])
                 if m_addrs:
                     for addr in m_addrs:
-                        # 매칭된 상세 정보 창의 주소 글씨도 흰색(#FFFFFF)으로 적용
                         st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#FFFFFF;'>{addr}</p>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<p style='margin:0px 0px 2px 15px; font-size:13px; color:#AAAAAA;'>(등록된 주소 없음)</p>", unsafe_allow_html=True)
